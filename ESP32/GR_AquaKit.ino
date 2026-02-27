@@ -10,7 +10,8 @@
 // BLE Setup
 #define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-BLECharacteristic *pRxCharacteristic;
+
+BLECharacteristic*pRxCharacteristic;
 
 // Forward declaration so the BLE Callback can see this function
 void handleIncomingByte(byte b);
@@ -49,6 +50,8 @@ int packetIndex = 0;
 #define OP_CLEAR_PIXELS             0x0A
 #define OP_REPEAT_N_TIMES           0x0B
 #define OP_LOOP_END                 0x0C 
+#define OP_IF_CONDITION             0x20
+#define OP_ENDIF                    0x21
 
 struct LightState { bool on; byte r, g, b; byte brightness; };
 struct PixelState { bool on; bool overrideColor; byte r, g, b; byte brightness; };
@@ -111,13 +114,20 @@ byte extEEPROM_read(unsigned int addr) {
   return rdata;
 }
 
+
+bool isEEPROMConnected() {
+  Wire.beginTransmission(EEPROM_ADDR);
+  byte error = Wire.endTransmission();
+  return (error == 0); // Returns true if the chip responded
+}
+
 void setup() {
   Serial.begin(115200); 
 
-  unsigned long startWait = millis();
-  while (!Serial && (millis() - startWait < 3000)) {
-    delay(10);
-  }
+  // unsigned long startWait = millis();
+  // while (!Serial && (millis() - startWait < 3000)) {
+  //   delay(10);
+  // }
   
   Wire.begin(SDA_PIN, SCL_PIN);
   delay(100); 
@@ -157,10 +167,17 @@ void setup() {
 
   strip.show();
 
-  loadProgramFromEEPROM();
-  if (programLength > 0) {
-    runningFromEEPROM = true;
-    Serial.printf("Loaded %d steps from External EEPROM\n", programLength);
+  // --- Conditional EEPROM Load ---
+  if (isEEPROMConnected()) {
+    Serial.println("EEPROM detected. Loading program...");
+    loadProgramFromEEPROM();
+    if (programLength > 0) {
+      runningFromEEPROM = true;
+      Serial.printf("Loaded %d steps from External EEPROM\n", programLength);
+    }
+  } else {
+    Serial.println("EEPROM not found. Skipping load.");
+    runningFromEEPROM = false;
   }
 }
 
@@ -228,6 +245,17 @@ unsigned long toULong(byte b1, byte b2, byte b3, byte b4) {
          ((unsigned long)b3 << 16) | ((unsigned long)b4 << 24);
 }
 
+bool userCondition(byte condType, byte value) {
+  // condType is cmd.data[0] (sent as 1 for true, 0 for false from Blockly)
+  // value is cmd.data[1] (unused currently)
+  
+  if (condType == 1) {
+    return true;  
+  } else {
+    return false; 
+  }
+}
+
 void executeProgram() {
   static bool waiting = false;
   static unsigned long delayStart, delayDuration;
@@ -254,6 +282,29 @@ void executeProgram() {
 
   Command &cmd = program[currentCmd];
   currentOp = cmd.op;
+
+  if (cmd.op == OP_IF_CONDITION) {
+
+    bool result = userCondition(cmd.data[0], cmd.data[1]);
+
+    if (!result) {
+      // Skip commands until ENDIF
+      int depth = 1;
+      while (depth > 0 && currentCmd < programLength - 1) {
+        currentCmd++;
+        if (program[currentCmd].op == OP_IF_CONDITION) depth++;
+        if (program[currentCmd].op == OP_ENDIF) depth--;
+      }
+    } else {
+      currentCmd++;   // run blocks inside IF
+    }
+    return;
+  }
+
+  else if (cmd.op == OP_ENDIF) {
+    currentCmd++;
+    return;
+  }
 
   if (cmd.op == OP_REPEAT_N_TIMES) {
     if (stackPtr < 4) { 
@@ -342,14 +393,31 @@ void storeCommand(byte op, byte d1, byte d2, byte d3, byte d4) {
 
 void saveProgramToEEPROM() {
   bool needsUpdate = false;
-  if (extEEPROM_read(0) != (byte)programLength) needsUpdate = true;
+  Serial.println(">>> EEPROM Check: Comparing incoming program with stored memory...");
+  if (extEEPROM_read(0) != (byte)programLength) {
+    needsUpdate = true;
+    Serial.println("    - Length mismatch detected.");
+  }
   if (!needsUpdate) {
     for (int i = 0; i < programLength; i++) {
       int a = 1 + i * CMD_SIZE;
-      if (extEEPROM_read(a) != program[i].op) { needsUpdate = true; break; }
+      if (extEEPROM_read(a) != program[i].op) {
+        needsUpdate = true;
+        Serial.printf("    - Command %d Opcode mismatch.\n", i);
+        break;
+      }
+      for (int j = 0; j < 4; j++) {
+        if (extEEPROM_read(a + 1 + j) != program[i].data[j]) {
+          needsUpdate = true;
+          Serial.printf("    - Command %d Data byte %d mismatch.\n", i, j);
+          break;
+        }
+      }
+      if (needsUpdate) break;
     }
   }
   if (needsUpdate) {
+    Serial.print(">>> EEPROM Writing: Saving new program... ");
     extEEPROM_write(0, (byte)programLength);
     for (int i = 0; i < programLength; i++) {
       int a = 1 + i * CMD_SIZE;
@@ -358,6 +426,9 @@ void saveProgramToEEPROM() {
     }
     extEEPROM_write(1 + programLength * CMD_SIZE, (byte)loopStartIndex);
     extEEPROM_write(2 + programLength * CMD_SIZE, (byte)loopProgram);
+    Serial.println("DONE.");
+  } else {
+    Serial.println(">>> EEPROM Skipped: Current program matches stored memory. No rewrite needed.");
   }
 }
 
@@ -374,25 +445,34 @@ void loadProgramFromEEPROM() {
 }
 
 void handleIncomingByte(byte b) {
+  // 1. End of program check
   if (b == 0xFF) {
-    saveProgramToEEPROM();
+    if (programLength > 0) {
+      saveProgramToEEPROM();
+      runningFromEEPROM = true;
+    }
     receivingProgram = false;
-    runningFromEEPROM = true;
     currentCmd = 0;
     packetIndex = 0;
-    Serial.println(">>> End of Program Received");
+    while(Serial.available() > 0) { Serial.read(); } // Clear trailing bytes
+    Serial.println("\n>>> End of Program Received");
     return;
   }
 
+  // 2. New stream initialization
   if (!receivingProgram) {
     programLength = 0;
     receivingProgram = true;
     runningFromEEPROM = false;
     packetIndex = 0;
+    loopProgram = false; // Reset loop flag for new program
+    Serial.println("\n>>> New Stream Started. Clearing RAM program.");
   }
 
+  // 3. Buffer the packet
   packetBuffer[packetIndex++] = b;
 
+  // 4. Process full 5-byte command
   if (packetIndex == 5) {
     byte op = packetBuffer[0];
     byte d1 = packetBuffer[1];
@@ -400,18 +480,20 @@ void handleIncomingByte(byte b) {
     byte d3 = packetBuffer[3];
     byte d4 = packetBuffer[4];
 
-    if (op == 0x00) { storeCommand(op, d1, d2, 0, 0); controlDevice(d1, d2); }
-    else if (op == 0x02) { storeCommand(op, d1, d2, d3, d4); }
-    else if (op == 0x03) { loopProgram = true; loopStartIndex = programLength; storeCommand(op, 0, 0, 0, 0); }
-    else if (op == OP_SET_LED_COLOR) { storeCommand(op, d1, d2, d3, 0); }
-    else if (op == OP_SET_LED_BRIGHTNESS) { storeCommand(op, d1, 0, 0, 0); }
-    else if (op == OP_SET_LED_PIXEL_COLOR) { storeCommand(op, d1, d2, d3, d4); }
-    else if (op == OP_SET_LED_PIXEL_BRIGHTNESS) { storeCommand(op, d1, d2, 0, 0); }
-    else if (op == OP_SET_LED_PIXEL_ONOFF) { storeCommand(op, d1, d2, 0, 0); }
-    else if (op == OP_CLEAR_PIXELS) { storeCommand(op, 0, 0, 0, 0); }
-    else if (op == OP_REPEAT_N_TIMES) { storeCommand(op, d1, 0, 0, 0); }
-    else if (op == OP_LOOP_END) { storeCommand(op, 0, 0, 0, 0); }
+    Serial.printf("    CMD Assembled: [Op:0x%02X, D1:0x%02X, D2:0x%02X, D3:0x%02X, D4:0x%02X]\n", op, d1, d2, d3, d4);
 
+    // Immediate Hardware Trigger (Interactive feedback)
+    if (op == 0x00) { 
+        controlDevice(d1, d2); 
+    } else if (op == 0x03) { 
+        loopProgram = true; 
+        loopStartIndex = programLength; 
+    }
+
+    // STORE ONCE: Save to RAM program array
+    storeCommand(op, d1, d2, d3, d4);
+    
+    // Reset for next command
     packetIndex = 0; 
   }
 }
