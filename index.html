@@ -40,6 +40,10 @@
       <button id="connectBtn" class="play">🔗</button>
       <button id="playBtn" class="play">▶</button>
     </div>
+    <select id="connectionMode" class="view-select">
+      <option value="serial">USB / Serial</option>
+      <option value="ble">Bluetooth (BLE)</option>
+    </select>
   </header>
 
   <main>
@@ -54,8 +58,15 @@
       <block type="forever"></block>
       <block type="repeat_n_times"></block>
     </category>
+    <category name="Logic" colour="#FF0000">
+      <block type="if_block"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_operation"></block>
+      <block type="block_true"></block>
+      <block type="block_false"></block>
+    </category>
     <category name="Control" colour="#f1c40f"><block type="delay"></block></category>
-    <category name="Devices" colour="#2980b9">
+    <category name="Devices" colour="#9b59b6">
       <block type="turn_device"></block>
       <block type="set_led_color"></block>
       <block type="set_pixel_color"></block>
@@ -64,12 +75,17 @@
   </xml>
 
   <script>
+    let currentMode = 'serial'; // Default
     const { SerialPort } = require('serialport'); // Ensure this is available in your Electron environment
     const { ReadlineParser } = require('@serialport/parser-readline');
 
     let workspace = null;
     let port = null;
     let writer = null;
+    let bleDevice = null;
+    let bleCharacteristic = null;
+    const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const CHARACTERISTIC_UUID_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
     class FieldLedRing extends Blockly.Field {
       constructor(value, validator) {
@@ -210,7 +226,7 @@
           { "type": "input_dummy" },
           { "type": "input_statement", "name": "DO" }
         ],
-        "colour": 160,
+        "colour": "#45b39d",
         "tooltip": "Run this block once when the program starts"
       },
       {
@@ -220,7 +236,7 @@
           { "type": "input_dummy" },
           { "type": "input_statement", "name": "DO" }
         ],
-        "colour": 120,
+        "colour": "#f39c12",
         "tooltip": "Repeat the blocks inside forever"
       },
       {
@@ -246,7 +262,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 65,
+        "colour": "#f1c40f",
         "tooltip": "Wait for some time before continuing"
       },
       {
@@ -274,7 +290,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 230,
+        "colour": "#9b59b6",
         "tooltip": "Turn a selected device on or off"
       },
       {
@@ -287,7 +303,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 250,
+        "colour": "#9b59b6",
         "tooltip": "Set NeoPixel ring color"
       },
       {
@@ -304,7 +320,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 250,
+        "colour": "#9b59b6",
         "tooltip": "Set light brightness (does not turn lights on)"
       },
       {
@@ -318,7 +334,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 250
+        "colour": "#9b59b6"
       },
       {
         "type": "set_pixel_brightness",
@@ -329,7 +345,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 250
+        "colour": "#9b59b6"
       },
       {
         "type": "set_pixel_onoff",
@@ -347,7 +363,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 250
+        "colour": "#9b59b6"
       },
       {
         "type": "ring_pattern_block",
@@ -360,7 +376,7 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 65
+        "colour": "#9b59b6"
       },
       {
         "type": "repeat_n_times",
@@ -381,10 +397,62 @@
         ],
         "previousStatement": null,
         "nextStatement": null,
-        "colour": 120,
+        "colour": "#f39c12",
         "tooltip": "Repeat blocks a fixed number of times"
-      }
+      },
+      {
+        "type": "if_block",
+        "message0": "if %1 then %2",
+        "args0": [
+          { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+          { "type": "input_statement", "name": "DO" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": '#FF0000'
+      },
+      {
+        "type": "logic_compare",
+        "message0": "%1 %2 %3",
+        "args0": [
+          { "type": "field_number", "name": "A", "value": 0 },
+          {
+            "type": "field_dropdown", "name": "OP",
+            "options": [ ["=", "EQ"], ["<", "LT"], [">", "GT"], ['!=','NEQ'], ['<=','LTE'], ['>=','GTE'] ]
+          },
+          { "type": "field_number", "name": "B", "value": 0 }
+        ],
+        "output": "Boolean",
+        "colour": '#FF0000'
+      },
+      {
+        "type": "logic_operation",
+        "message0": "%1 %2 %3",
+        "args0": [
+          { "type": "input_value", "name": "A", "check": "Boolean" },
+          {
+            "type": "field_dropdown", "name": "OP",
+            "options": [ ["and", "AND"], ["or", "OR"] ]
+          },
+          { "type": "input_value", "name": "B", "check": "Boolean" }
+        ],
+        "inputsInline": true,
+        "output": "Boolean",
+        "colour": '#FF0000'
+      },
 
+      {
+        "type": "block_true",
+        "message0": "true",
+        "output": "Boolean",
+        "colour": '#FF0000'
+      },
+      {
+        "type": "block_false",
+        "message0": "false",
+        "output": "Boolean",
+        "colour": '#FF0000'
+      }
     ]);
 
     // 3. Your Generators (Fixed String Literals)
@@ -478,6 +546,52 @@
 
       return code;
     };
+
+    Blockly.JavaScript['if_block'] = function(block) {
+      // 1. Get the code from the block snapped into the condition slot
+      // This will return "1" or "0" based on the comparison
+      const conditionCode = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+
+      let code = '';
+      // Opcode 20 (IF), Byte1 = condition result (1 or 0)
+      code += `32,${conditionCode},0,0,0\n`;
+      code += statements;
+      code += `33,0,0,0,0\n`; // Opcode 21 (ENDIF)
+      return code;
+    };
+
+    // Add this to handle the "Comparison" blocks (e.g., 5 > 2)
+    Blockly.JavaScript['logic_compare'] = function(block) {
+      const left = parseInt(block.getFieldValue('A')) || '0';
+      const right = parseInt(block.getFieldValue('B')) || '0';
+      const op = block.getFieldValue('OP');
+  
+      // We evaluate the comparison here and return 1 or 0 to the IF block
+      const operators = { 'EQ': '==', 'NEQ': '!=', 'LT': '<', 'LTE': '<=', 'GT': '>', 'GTE': '>=' };
+      const result = eval(`${left} ${operators[op]} ${right}`) ? '1' : '0';
+      return [result, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // Add this for the "True/False" dropdown block
+    Blockly.JavaScript['logic_boolean'] = function(block) {
+      const code = (block.getFieldValue('BOOL') === 'TRUE') ? '1' : '0';
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+      // Generator for snap-in AND/OR logic
+    Blockly.JavaScript['logic_operation'] = function(block) {
+      const left = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const right = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const op = block.getFieldValue('OP');
+  
+      // Evaluation: 1 is true, 0 is false
+      const res = (op === 'AND') ? (left == '1' && right == '1') : (left == '1' || right == '1');
+      return [res ? '1' : '0', Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    // Generator for individual True/False blocks
+    Blockly.JavaScript['block_true'] = function(block) { return ['1', Blockly.JavaScript.ORDER_ATOMIC]; };
+    Blockly.JavaScript['block_false'] = function(block) { return ['0', Blockly.JavaScript.ORDER_ATOMIC]; };
     
     async function detectDevicePort() {
       const ports = await SerialPort.list();
@@ -548,6 +662,37 @@
     // --- 💡 Connection Status Indicator ---
     const connectionStatusEl = document.getElementById('connectionStatus');
 
+    async function connectViaBluetooth() {
+      try {
+        console.log("Requesting Bluetooth Device...");
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'AquaKit-Hybrid' }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        console.log("Connecting to GATT Server...");
+        const server = await bleDevice.gatt.connect();
+
+        console.log("Getting Service...");
+        const service = await server.getPrimaryService(SERVICE_UUID);
+
+        console.log("Getting Characteristic...");
+        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+
+        updateConnectionStatus(true);
+        console.log("✅ BLE Connected!");
+        
+        bleDevice.ongattserverdisconnected = () => {
+          console.warn("BLE Disconnected");
+          updateConnectionStatus(false);
+          bleCharacteristic = null;
+        };
+      } catch (error) {
+        console.error("BLE Connection Error:", error);
+        alert("Bluetooth Connection Failed: " + error);
+      }
+    }
+    
     function updateConnectionStatus(isConnected) {
       if (isConnected) {
         connectionStatusEl.textContent = "Connected";
@@ -605,8 +750,52 @@
       Blockly.svgResize(workspace);
     };
 
-    document.getElementById('connectBtn').onclick = connectToDevice;
-    document.getElementById('playBtn').onclick = send;
+    // document.getElementById('connectBtn').onclick = connectToDevice;
+    // document.getElementById('playBtn').onclick = send;
+    // Listen for mode changes
+    document.getElementById('connectionMode').onchange = (e) => {
+        currentMode = e.target.value;
+        updateConnectionStatus(false); // Reset status visually on switch
+    };
+
+    // Unified Connect Button
+    document.getElementById('connectBtn').onclick = async () => {
+        if (currentMode === 'serial') {
+            await connectToDevice();
+        } else {
+            await connectViaBluetooth();
+        }
+    };
+
+    // Unified Send Button (Replaces the old 'send' function)
+    document.getElementById('playBtn').onclick = async () => {
+        // 1. Generate the bytes
+        const code = Blockly.JavaScript.workspaceToCode(workspace) + "255\n";
+        const allBytes = code.replace(/\n/g, ',')
+                             .split(',')
+                             .map(n => n.trim())
+                             .filter(n => n.length > 0 && !isNaN(n))
+                             .map(n => parseInt(n));
+
+        if (currentMode === 'serial') {
+            if (!port || !port.isOpen) return alert("Connect USB first!");
+            // Send in 5-byte chunks for Serial
+            for (let i = 0; i < allBytes.length; i += 5) {
+                port.write(Buffer.from(allBytes.slice(i, i + 5)));
+                await new Promise(r => setTimeout(r, 50));
+            }
+        } else {
+            if (!bleCharacteristic) return alert("Connect Bluetooth first!");
+            // Send in chunks for BLE (Max 20 bytes per write)
+            for (let i = 0; i < allBytes.length; i += 20) {
+                const chunk = new Uint8Array(allBytes.slice(i, i + 20));
+                await bleCharacteristic.writeValue(chunk);
+                await new Promise(r => setTimeout(r, 100)); // BLE needs a bit more time
+            }
+        }
+        console.log("Program sent!");
+    };
+    
     window.onload = init;
   </script>
 </body>
