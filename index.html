@@ -64,6 +64,7 @@
       <block type="logic_operation"></block>
       <block type="block_true"></block>
       <block type="block_false"></block>
+      <block type="if_else"></block>
     </category>
     <category name="Control" colour="#f1c40f"><block type="delay"></block></category>
     <category name="Devices" colour="#9b59b6">
@@ -452,6 +453,18 @@
         "message0": "false",
         "output": "Boolean",
         "colour": '#FF0000'
+      },
+      {
+        "type": "if_else",
+        "message0": "if %1 then %2 else %3",
+        "args0": [
+          { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+          { "type": "input_statement", "name": "IF_DO" },
+          { "type": "input_statement", "name": "ELSE_DO" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": '#FF0000'
       }
     ]);
 
@@ -592,7 +605,22 @@
     // Generator for individual True/False blocks
     Blockly.JavaScript['block_true'] = function(block) { return ['1', Blockly.JavaScript.ORDER_ATOMIC]; };
     Blockly.JavaScript['block_false'] = function(block) { return ['0', Blockly.JavaScript.ORDER_ATOMIC]; };
-    
+
+    // Generator for IF-ELSE block
+    Blockly.JavaScript['if_else'] = function(block) {
+      const conditionCode = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const if_Statements = Blockly.JavaScript.statementToCode(block, 'IF_DO');
+      const else_Statements = Blockly.JavaScript.statementToCode(block, 'ELSE_DO');
+
+      let code = '';
+      // Opcode 32 (IF), Byte1 = condition result (1 or 0)
+      code += `32, ${conditionCode},0,0,0\n`;
+      code += if_Statements;
+      code += `33,0,0,0,0\n`; // Opcode 33: ELSE
+      code += else_Statements;
+      code += `34,0,0,0,0\n`; // Opcode 34: ENDIF
+      return code;
+    }   
     async function detectDevicePort() {
       const ports = await SerialPort.list();
 
