@@ -73,6 +73,7 @@
       <block type="set_pixel_color"></block>
       <block type="ring_pattern_block"></block>
     </category>
+    <category name="Variables" colour="#ff4da6" custom="VARIABLE"></category>
   </xml>
 
   <script>
@@ -465,6 +466,37 @@
         "previousStatement": null,
         "nextStatement": null,
         "colour": '#FF0000'
+      },
+      {
+        "type": "set_variable",
+        "message0": "set %1 to %2",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" },
+          { "type": "input_value", "name": "VALUE", check: "Number" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": "#ff4da6"
+      },
+      {
+        "type": "change_variable",
+        "message0": "change %1 by %2",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" },
+          { "type": "input_value", "name": "VALUE", check: "Number" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": "#ff4da6"
+      },
+      {
+        "type": "variable_get_custom",
+        "message0": "%1",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" }
+        ],
+        "output": "Number",
+        "colour": "#ff4da6"
       }
     ]);
 
@@ -620,7 +652,36 @@
       code += else_Statements;
       code += `34,0,0,0,0\n`; // Opcode 34: ENDIF
       return code;
-    }   
+    };
+    Blockly.JavaScript['set_variable'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC ) || '0';
+      const value = parseInt(valueCode) || 0;
+      const low = value & 0xFF;
+      const high = (value >> 8) & 0xFF;
+
+      return `40,${varIndex},${low},${high},0\n`;
+    };
+    Blockly.JavaScript['change_variable'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const value = parseInt(valueCode) || 0;
+      const low = value & 0xFF;
+      const high = (value >> 8) & 0xFF;
+
+      return `41,${varIndex},${low},${high},0\n`;
+    };
+    Blockly.JavaScript['variable_get_custom'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      return [`50,${varIndex},0,0,0`, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+     
     async function detectDevicePort() {
       const ports = await SerialPort.list();
 
