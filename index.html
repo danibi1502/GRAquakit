@@ -31,6 +31,7 @@
 
   <header class="nav">
     <a class="logo" href="#"><span class="icon">A</span><span>AquaKit</span></a>
+
     <div style="display: flex; align-items: center; gap: 8px;">
       <div id="connectionStatus" class="status disconnected">Disconnected</div>
       <div id="depthBadge" class="status" style="background: #e0f2fe; color: #0369a1; margin-left:10px;">
@@ -40,7 +41,9 @@
         Time: --:--
       </div>
     </div>
-    
+
+    <!-- <div id="connectionStatus" class="status disconnected">Disconnected</div> -->
+
     <select id="view" class="view-select">
       <option value="blocks">Blocks</option>
       <option value="code">Code View</option>
@@ -73,6 +76,7 @@
       <block type="logic_operation"></block>
       <block type="block_true"></block>
       <block type="block_false"></block>
+      <block type="if_else"></block>
     </category>
     <category name="Control" colour="#f1c40f"><block type="delay"></block></category>
     <category name="Devices" colour="#9b59b6">
@@ -81,6 +85,7 @@
       <block type="set_pixel_color"></block>
       <block type="ring_pattern_block"></block>
     </category>
+    <category name="Variables" colour="#ff4da6" custom="VARIABLE"></category>
     <category name="Sensors" colour="#3498db">
       <block type="get_water_depth"></block>
       <block type="get_rtc_time"></block>
@@ -467,6 +472,49 @@
         "colour": '#FF0000'
       },
       {
+        "type": "if_else",
+        "message0": "if %1 then %2 else %3",
+        "args0": [
+          { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+          { "type": "input_statement", "name": "IF_DO" },
+          { "type": "input_statement", "name": "ELSE_DO" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": '#FF0000'
+      },
+      {
+        "type": "set_variable",
+        "message0": "set %1 to %2",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" },
+          { "type": "input_value", "name": "VALUE", check: "Number" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": "#ff4da6"
+      },
+      {
+        "type": "change_variable",
+        "message0": "change %1 by %2",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" },
+          { "type": "input_value", "name": "VALUE", check: "Number" }
+        ],
+        "previousStatement": null,
+        "nextStatement": null,
+        "colour": "#ff4da6"
+      },
+      {
+        "type": "variable_get_custom",
+        "message0": "%1",
+        "args0": [
+          { "type": "field_variable", "name": "VAR", "variable": "item" }
+        ],
+        "output": "Number",
+        "colour": "#ff4da6"
+      },
+      {
         "type": "get_water_depth",
         "message0": "water depth (cm)",
         "output": "Number",
@@ -619,7 +667,50 @@
     // Generator for individual True/False blocks
     Blockly.JavaScript['block_true'] = function(block) { return ['1', Blockly.JavaScript.ORDER_ATOMIC]; };
     Blockly.JavaScript['block_false'] = function(block) { return ['0', Blockly.JavaScript.ORDER_ATOMIC]; };
-    
+
+    // Generator for IF-ELSE block
+    Blockly.JavaScript['if_else'] = function(block) {
+      const conditionCode = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const if_Statements = Blockly.JavaScript.statementToCode(block, 'IF_DO');
+      const else_Statements = Blockly.JavaScript.statementToCode(block, 'ELSE_DO');
+
+      let code = '';
+      // Opcode 32 (IF), Byte1 = condition result (1 or 0)
+      code += `32, ${conditionCode},0,0,0\n`;
+      code += if_Statements;
+      code += `33,0,0,0,0\n`; // Opcode 33: ELSE
+      code += else_Statements;
+      code += `34,0,0,0,0\n`; // Opcode 34: ENDIF
+      return code;
+    };
+    Blockly.JavaScript['set_variable'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC ) || '0';
+      const value = parseInt(valueCode) || 0;
+      const low = value & 0xFF;
+      const high = (value >> 8) & 0xFF;
+
+      return `40,${varIndex},${low},${high},0\n`;
+    };
+    Blockly.JavaScript['change_variable'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC) || '0';
+      const value = parseInt(valueCode) || 0;
+      const low = value & 0xFF;
+      const high = (value >> 8) & 0xFF;
+
+      return `41,${varIndex},${low},${high},0\n`;
+    };
+    Blockly.JavaScript['variable_get_custom'] = function(block) {
+      const varId = block.getFieldValue('VAR');
+      const variable = Blockly.getMainWorkspace().getVariableById(varId);
+      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+      return [`50,${varIndex},0,0,0`, Blockly.JavaScript.ORDER_ATOMIC];
+    };
     Blockly.JavaScript['get_water_depth'] = function(block) {
       // We use the last known value from the sensor
       const code = window.lastDepth || 0;
@@ -630,7 +721,7 @@
       const code = "'" + (window.lastTime || "00:00") + "'";
       return [code, Blockly.JavaScript.ORDER_ATOMIC];
     };
-
+     
     async function detectDevicePort() {
       const ports = await SerialPort.list();
 

@@ -51,7 +51,11 @@ int packetIndex = 0;
 #define OP_REPEAT_N_TIMES           0x0B
 #define OP_LOOP_END                 0x0C 
 #define OP_IF_CONDITION             0x20
-#define OP_ENDIF                    0x21
+#define OP_ELSE                     0x21
+#define OP_ENDIF                    0x22
+#define OP_SET_VARIABLE             0x40
+#define OP_CHANGE_VARIABLE          0x41
+
 
 struct LightState { bool on; byte r, g, b; byte brightness; };
 struct PixelState { bool on; bool overrideColor; byte r, g, b; byte brightness; };
@@ -71,6 +75,7 @@ int setColours[72] = {0};
 int setPixels[24] = {0};
 int previousOp = 0;
 int currentOp = 0;
+int16_t variables[20] = {0};   // supports 20 variables
 
 struct LoopFrame {
   int startIndex;    
@@ -283,28 +288,54 @@ void executeProgram() {
   Command &cmd = program[currentCmd];
   currentOp = cmd.op;
 
-  if (cmd.op == OP_IF_CONDITION) {
+ if (cmd.op == OP_IF_CONDITION) {
 
-    bool result = userCondition(cmd.data[0], cmd.data[1]);
+  bool result = userCondition(cmd.data[0], cmd.data[1]);
 
-    if (!result) {
-      // Skip commands until ENDIF
-      int depth = 1;
-      while (depth > 0 && currentCmd < programLength - 1) {
-        currentCmd++;
-        if (program[currentCmd].op == OP_IF_CONDITION) depth++;
-        if (program[currentCmd].op == OP_ENDIF) depth--;
+  if (!result) {
+    int depth = 1;
+
+    while (depth > 0 && currentCmd < programLength - 1) {
+      currentCmd++;
+
+      if (program[currentCmd].op == OP_IF_CONDITION) depth++;
+
+      else if (program[currentCmd].op == OP_ENDIF) depth--;
+
+      else if (program[currentCmd].op == OP_ELSE && depth == 1) {
+        currentCmd++;  
+        return;
       }
-    } else {
-      currentCmd++;   // run blocks inside IF
     }
-    return;
+
+    return;   
   }
+
+  currentCmd++;
+  return;
+}
 
   else if (cmd.op == OP_ENDIF) {
     currentCmd++;
     return;
   }
+  else if (cmd.op == OP_ELSE) {
+  // IF was true → skip ELSE block
+  int depth = 1;
+  while (depth > 0 && currentCmd < programLength - 1) {
+    currentCmd++;
+
+    if (program[currentCmd].op == OP_IF_CONDITION) depth++;
+    else if (program[currentCmd].op == OP_ENDIF) depth--;
+  }
+  currentCmd++;
+  return;
+}
+
+else if (cmd.op == OP_ENDIF) {
+  currentCmd++;
+  return;
+}
 
   if (cmd.op == OP_REPEAT_N_TIMES) {
     if (stackPtr < 4) { 
