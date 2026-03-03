@@ -6,6 +6,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include "RTClib.h"
 
 // BLE Setup
 #define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -56,7 +57,6 @@ int packetIndex = 0;
 #define OP_SET_VARIABLE             0x40
 #define OP_CHANGE_VARIABLE          0x41
 
-
 struct LightState { bool on; byte r, g, b; byte brightness; };
 struct PixelState { bool on; bool overrideColor; byte r, g, b; byte brightness; };
 struct Command { byte op; byte data[4]; };
@@ -64,6 +64,8 @@ struct Command { byte op; byte data[4]; };
 PixelState pixels[NUM_LEDS];
 LightState lights = { false, 255, 255, 255, 100 };
 Command program[MAX_CMDS];
+
+RTC_DS3231 rtc; // or RTC_DS1307 rtc; depending on your module
 
 int programLength = 0;
 bool loopProgram = false;
@@ -76,6 +78,8 @@ int setPixels[24] = {0};
 int previousOp = 0;
 int currentOp = 0;
 int16_t variables[20] = {0};   // supports 20 variables
+
+unsigned long lastReport = 0;
 
 struct LoopFrame {
   int startIndex;    
@@ -133,9 +137,18 @@ void setup() {
   // while (!Serial && (millis() - startWait < 3000)) {
   //   delay(10);
   // }
+
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(TRIG_PIN, OUTPUT);
   
   Wire.begin(SDA_PIN, SCL_PIN);
   delay(100); 
+
+  Wire.begin(SDA_PIN, SCL_PIN);
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+  }
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Sets to compile time
   
   for (int i = 0; i < NUM_LEDS; i++) {
     pixels[i] = { true, false, 255, 255, 255, 100 };
@@ -158,8 +171,11 @@ void setup() {
   
   pRxCharacteristic = pService->createCharacteristic(
                         CHARACTERISTIC_UUID_RX,
-                        BLECharacteristic::PROPERTY_WRITE
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_NOTIFY
                       );
+  // Add the Descriptor so the phone/computer knows it can listen
+  pRxCharacteristic->addDescriptor(new BLE2902());
 
   pRxCharacteristic->setCallbacks(new MyCallbacks());
   pService->start();
@@ -189,6 +205,30 @@ void setup() {
 void loop() {
   while (Serial.available() > 0) {
     handleIncomingByte(Serial.read());
+  }
+
+  // Report every 500ms so the UI feels responsive
+  if (millis() - lastReport > 500) {
+    float depth = getWaterDepth();
+    DateTime now = rtc.now();
+    
+    // Format: HH:MM
+    char timeStr[6];
+    sprintf(timeStr, "%02d:%02d", now.hour(), now.minute());
+
+    // Send formatted string to UI
+    String msg = "VALUE:DEPTH:" + String(depth) + "|TIME:" + String(timeStr) + "\n";
+    
+    // Send to USB
+    Serial.print(msg);
+    
+    // Send to Bluetooth
+    if (pRxCharacteristic) {
+        pRxCharacteristic->setValue(msg.c_str());
+        pRxCharacteristic->notify();
+    }
+
+    lastReport = millis();
   }
 
   if (runningFromEEPROM && programLength > 0) {
@@ -288,32 +328,27 @@ void executeProgram() {
   Command &cmd = program[currentCmd];
   currentOp = cmd.op;
 
- if (cmd.op == OP_IF_CONDITION) {
+  if (cmd.op == OP_IF_CONDITION) {
 
-  bool result = userCondition(cmd.data[0], cmd.data[1]);
+    bool result = userCondition(cmd.data[0], cmd.data[1]);
 
-  if (!result) {
-    int depth = 1;
-
-    while (depth > 0 && currentCmd < programLength - 1) {
-      currentCmd++;
-
-      if (program[currentCmd].op == OP_IF_CONDITION) depth++;
-
-      else if (program[currentCmd].op == OP_ENDIF) depth--;
-
-      else if (program[currentCmd].op == OP_ELSE && depth == 1) {
-        currentCmd++;  
-        return;
+    if (!result) {
+      // Skip commands until ENDIF
+      int depth = 1;
+      while (depth > 0 && currentCmd < programLength - 1) {
+        currentCmd++;
+        if (program[currentCmd].op == OP_IF_CONDITION) depth++;
+        else if (program[currentCmd].op == OP_ENDIF) depth--;
+        else if (program[currentCmd].op == OP_ELSE && depth == 1) {
+          currentCmd++;  
+          return;
+        }
       }
+      return;
     }
-
-    return;   
+    currentCmd++;
+    return;
   }
-
-  currentCmd++;
-  return;
-}
 
   else if (cmd.op == OP_ENDIF) {
     currentCmd++;
@@ -330,12 +365,11 @@ void executeProgram() {
   }
   currentCmd++;
   return;
-}
-
-else if (cmd.op == OP_ENDIF) {
-  currentCmd++;
-  return;
-}
+  }
+  else if (cmd.op == OP_ENDIF) {
+    currentCmd++;
+    return;
+  }
 
   if (cmd.op == OP_REPEAT_N_TIMES) {
     if (stackPtr < 4) { 
@@ -527,4 +561,16 @@ void handleIncomingByte(byte b) {
     // Reset for next command
     packetIndex = 0; 
   }
+}
+
+float getWaterDepth() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  float distance = duration * 0.034 / 2;
+  return (distance > 400 || distance <= 0) ? 0 : distance;
 }
