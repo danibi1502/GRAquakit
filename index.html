@@ -682,7 +682,7 @@
       code += else_Statements;
       code += `34,0,0,0,0\n`; // Opcode 34: ENDIF
       return code;
-    };
+    }; 
     Blockly.JavaScript['set_variable'] = function(block) {
       const varId = block.getFieldValue('VAR');
       const variable = Blockly.getMainWorkspace().getVariableById(varId);
