@@ -22,7 +22,7 @@
     #editorWrap, #blocksArea { flex: 1; border-radius: 8px; border: 1px solid #e6eef2; background: #fff; display: flex; overflow: hidden; }
     #blocklyDiv { width: 100%; height: 100%; }
     #editor { flex: 1; padding: 12px; border: none; font-family: monospace; outline: none; font-size: 14px; resize: none; }
-    .status { font-weight: 600; padding: 6px 12px; border-radius: 12px; font-size: 14px; }
+    .status { font-weight: 600; padding: 6px 12px; border-radius: 12px; font-size: 14px; white-space: nowrap; flex-shrink: 0; min-width: fit-content;}
     .status.connected { color: #16a34a; background: #dcfce7; border: 1px solid #86efac; }
     .status.disconnected { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; }
   </style>
@@ -31,7 +31,16 @@
 
   <header class="nav">
     <a class="logo" href="#"><span class="icon">A</span><span>AquaKit</span></a>
-    <div id="connectionStatus" class="status disconnected">Disconnected</div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div id="connectionStatus" class="status disconnected">Disconnected</div>
+      <div id="depthBadge" class="status" style="background: #e0f2fe; color: #0369a1; margin-left:10px;">
+        Depth: -- cm
+      </div>
+      <div id="timeBadge" class="status" style="background: #fef9c3; color: #854d0e; margin-left:10px;">
+        Time: --:--
+      </div>
+    </div>
+    
     <select id="view" class="view-select">
       <option value="blocks">Blocks</option>
       <option value="code">Code View</option>
@@ -71,6 +80,10 @@
       <block type="set_led_color"></block>
       <block type="set_pixel_color"></block>
       <block type="ring_pattern_block"></block>
+    </category>
+    <category name="Sensors" colour="#3498db">
+      <block type="get_water_depth"></block>
+      <block type="get_rtc_time"></block>
     </category>
   </xml>
 
@@ -452,6 +465,20 @@
         "message0": "false",
         "output": "Boolean",
         "colour": '#FF0000'
+      },
+      {
+        "type": "get_water_depth",
+        "message0": "water depth (cm)",
+        "output": "Number",
+        "colour": "#3498db",
+        "tooltip": "Returns the current water level in centimeters"
+      },
+      {
+        "type": "get_rtc_time",
+        "message0": "current time",
+        "output": "String",
+        "colour": "#3498db",
+        "tooltip": "Returns the current time from the RTC (HH:MM)"
       }
     ]);
 
@@ -593,6 +620,17 @@
     Blockly.JavaScript['block_true'] = function(block) { return ['1', Blockly.JavaScript.ORDER_ATOMIC]; };
     Blockly.JavaScript['block_false'] = function(block) { return ['0', Blockly.JavaScript.ORDER_ATOMIC]; };
     
+    Blockly.JavaScript['get_water_depth'] = function(block) {
+      // We use the last known value from the sensor
+      const code = window.lastDepth || 0;
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
+    Blockly.JavaScript['get_rtc_time'] = function(block) {
+      const code = "'" + (window.lastTime || "00:00") + "'";
+      return [code, Blockly.JavaScript.ORDER_ATOMIC];
+    };
+
     async function detectDevicePort() {
       const ports = await SerialPort.list();
 
@@ -632,8 +670,24 @@
         parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
         parser.on('data', (data) => {
-          console.log('Received from device:', data.trim());
-          // You can update UI or Blockly workspace here if needed
+          const line = data.trim();
+          if (line.startsWith("VALUE:")) {
+            const parts = line.split("|");
+            parts.forEach(p => {
+                if (p.includes("DEPTH:")) {
+                    const val = p.split(":")[2];
+                    document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
+                    window.lastDepth = parseFloat(val);
+                }
+                if (p.includes("TIME:")) {
+                    const val = p.replace("TIME:", ""); 
+                    document.getElementById('timeBadge').textContent = `Time: ${val}`;
+                    window.lastTime = val;
+                }
+            });
+          } else {
+            console.log('Device Log:', line);
+          }
         });
 
         port.on('open', () => {
@@ -686,6 +740,44 @@
           console.warn("BLE Disconnected");
           updateConnectionStatus(false);
           bleCharacteristic = null;
+        };
+        console.log("Starting Notifications...");
+        await bleCharacteristic.startNotifications();
+
+        let bleBuffer = "";
+
+        bleCharacteristic.oncharacteristicvaluechanged = (event) => {
+          const decoder = new TextDecoder();
+          const chunk = decoder.decode(event.target.value);
+          bleBuffer += chunk;
+          // Only process if we have at least one complete line
+          if (bleBuffer.includes('\n')) {
+              const lines = bleBuffer.split('\n');
+              
+              // Keep the last partial piece in the buffer (usually an empty string)
+              bleBuffer = lines.pop(); 
+
+              lines.forEach(line => {
+                  const cleanLine = line.trim();
+                  if (!cleanLine.startsWith("VALUE:")) return;
+
+                  const parts = cleanLine.split("|");
+                  parts.forEach(p => {
+                      if (p.includes("DEPTH:")) {
+                          const val = p.split(":")[2]; // Splits VALUE:DEPTH:XX
+                          if (val) {
+                              document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
+                              window.lastDepth = parseFloat(val);
+                          }
+                      }
+                      if (p.includes("TIME:")) {
+                          const val = p.replace("TIME:", ""); 
+                          document.getElementById('timeBadge').textContent = `Time: ${val}`;
+                          window.lastTime = val;
+                      }
+                  });
+              });
+          }
         };
       } catch (error) {
         console.error("BLE Connection Error:", error);
