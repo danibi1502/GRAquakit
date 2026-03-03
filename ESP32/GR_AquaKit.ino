@@ -53,6 +53,8 @@ int packetIndex = 0;
 #define OP_IF_CONDITION             0x20
 #define OP_ELSE                     0x21
 #define OP_ENDIF                    0x22
+#define OP_SET_VARIABLE             0x40
+#define OP_CHANGE_VARIABLE          0x41
 
 
 struct LightState { bool on; byte r, g, b; byte brightness; };
@@ -73,6 +75,7 @@ int setColours[72] = {0};
 int setPixels[24] = {0};
 int previousOp = 0;
 int currentOp = 0;
+int16_t variables[20] = {0};   // supports 20 variables
 
 struct LoopFrame {
   int startIndex;    
