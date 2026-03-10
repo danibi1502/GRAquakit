@@ -54,8 +54,32 @@ int packetIndex = 0;
 #define OP_IF_CONDITION             0x20
 #define OP_ELSE                     0x21
 #define OP_ENDIF                    0x22
-#define OP_SET_VARIABLE             0x40
-#define OP_CHANGE_VARIABLE          0x41
+#define OP_SET_VARIABLE             0x28
+#define OP_CHANGE_VARIABLE          0x29
+// #define OP_MATH_ARITHMETIC          0x50
+// #define OP_MATH_RANDOM              0x51
+// #define OP_MATH_SINGLE              0x52
+// ===== Expression Opcodes (VM) =====
+#define OP_PUSH_CONST     0x3C
+#define OP_PUSH_VAR       0x3D
+#define OP_PUSH_DEPTH     0x3E
+#define OP_PUSH_TIME      0x3F
+
+#define OP_ADD            0x46
+#define OP_SUB            0x47
+#define OP_MUL            0x48
+#define OP_DIV            0x49
+#define OP_MOD            0x4A
+
+#define OP_COMPARE_EQ     0x50
+#define OP_COMPARE_LT     0x51
+#define OP_COMPARE_GT     0x52
+#define OP_COMPARE_NEQ    0x53
+#define OP_COMPARE_LTE    0x54
+#define OP_COMPARE_GTE    0x55
+
+#define OP_AND            0x5A
+#define OP_OR             0x5B
 
 struct LightState { bool on; byte r, g, b; byte brightness; };
 struct PixelState { bool on; bool overrideColor; byte r, g, b; byte brightness; };
@@ -78,6 +102,27 @@ int setPixels[24] = {0};
 int previousOp = 0;
 int currentOp = 0;
 int16_t variables[20] = {0};   // supports 20 variables
+
+// ===== Expression Stack =====
+int32_t exprStack[32];
+int exprSP = 0;
+
+void push(int32_t v) {
+  if (exprSP < 32) {
+    exprStack[exprSP++] = v;
+  }
+}
+
+int32_t pop() {
+  if (exprSP > 0) {
+    return exprStack[--exprSP];
+  }
+  return 0;
+}
+
+void clearStack() {
+  exprSP = 0;
+}
 
 unsigned long lastReport = 0;
 
@@ -144,12 +189,12 @@ void setup() {
   Wire.begin(SDA_PIN, SCL_PIN);
   delay(100); 
 
-  Wire.begin(SDA_PIN, SCL_PIN);
   if (!rtc.begin()) {
     Serial.println("Couldn't find RTC");
   }
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // Sets to compile time
-  
+  if (rtc.lostPower()) {
+      rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }  
   for (int i = 0; i < NUM_LEDS; i++) {
     pixels[i] = { true, false, 255, 255, 255, 100 };
   }
@@ -290,59 +335,73 @@ unsigned long toULong(byte b1, byte b2, byte b3, byte b4) {
          ((unsigned long)b3 << 16) | ((unsigned long)b4 << 24);
 }
 
-bool userCondition(byte condType, byte value) {
-  // condType is cmd.data[0] (sent as 1 for true, 0 for false from Blockly)
-  // value is cmd.data[1] (unused currently)
+// bool userCondition(byte condType, byte value) {
+//   // condType is cmd.data[0] (sent as 1 for true, 0 for false from Blockly)
+//   // value is cmd.data[1] (unused currently)
   
-  if (condType == 1) {
-    return true;  
-  } else {
-    return false; 
-  }
-}
+//   if (condType == 1) {
+//     return true;  
+//   } else {
+//     return false; 
+//   }
+// }
 
 void executeProgram() {
+  if (currentCmd == loopStartIndex) clearStack();
+
   static bool waiting = false;
   static unsigned long delayStart, delayDuration;
 
   if (waiting) {
-    if (millis() - delayStart >= delayDuration) {
-      waiting = false;
-      currentCmd++;
-    }
+    if (millis() - delayStart >= delayDuration) { waiting = false; currentCmd++; }
     return;
   }
-  
+
   if (currentCmd >= programLength) {
-    if (loopProgram) {
-      currentCmd = loopStartIndex;
-      stackPtr = -1; 
-      Serial.println(">> Program Looping...");
-    } else {
-      runningFromEEPROM = false;
-      Serial.println(">> Program Finished.");
-      return;
-    }
+    if (loopProgram) { currentCmd = loopStartIndex; stackPtr = -1; clearStack(); Serial.println(">> Program Looping..."); }
+    else { runningFromEEPROM = false; Serial.println(">> Program Finished."); }
+    return;
   }
 
   Command &cmd = program[currentCmd];
   currentOp = cmd.op;
 
-  if (cmd.op == OP_IF_CONDITION) {
+  // ===== EXPRESSION VM =====
+  if (cmd.op >= 0x3C && cmd.op <= 0x5B) {
+    switch (cmd.op) {
+      case OP_PUSH_CONST: { int val = (int)cmd.data[0] | ((int)cmd.data[1] << 8); push(val); break; }
+      case OP_PUSH_VAR:   push(variables[cmd.data[0]]); break;
+      case OP_PUSH_DEPTH: push((int)getWaterDepth()); break;
+      case OP_PUSH_TIME:  { DateTime now = rtc.now(); push(now.hour() * 60 + now.minute()); break; }
+      case OP_ADD:        { int b=pop(),a=pop(); push(a+b); break; }
+      case OP_SUB:        { int b=pop(),a=pop(); push(a-b); break; }
+      case OP_MUL:        { int b=pop(),a=pop(); push(a*b); break; }
+      case OP_DIV:        { int b=pop(),a=pop(); push(b==0?0:a/b); break; }
+      case OP_MOD:        { int b=pop(),a=pop(); push(b==0?0:a%b); break; }
+      case OP_COMPARE_EQ:  { int b=pop(),a=pop(); push(a==b); break; }
+      case OP_COMPARE_LT:  { int b=pop(),a=pop(); push(a<b);  break; }
+      case OP_COMPARE_GT:  { int b=pop(),a=pop(); push(a>b);  break; }
+      case OP_COMPARE_NEQ: { int b=pop(),a=pop(); push(a!=b); break; }
+      case OP_COMPARE_LTE: { int b=pop(),a=pop(); push(a<=b); break; }
+      case OP_COMPARE_GTE: { int b=pop(),a=pop(); push(a>=b); break; }
+      case OP_AND: { int b=pop(),a=pop(); push(a&&b); break; }
+      case OP_OR:  { int b=pop(),a=pop(); push(a||b); break; }
+    }
+    currentCmd++;
+    return;
+  }
 
-    bool result = userCondition(cmd.data[0], cmd.data[1]);
-
+  else if (cmd.op == OP_IF_CONDITION) {
+    int result = pop();
+    Serial.printf(">>> IF result: %d (stack had %d items)\n", result, exprSP);
+    clearStack();
     if (!result) {
-      // Skip commands until ENDIF
       int depth = 1;
       while (depth > 0 && currentCmd < programLength - 1) {
         currentCmd++;
         if (program[currentCmd].op == OP_IF_CONDITION) depth++;
         else if (program[currentCmd].op == OP_ENDIF) depth--;
-        else if (program[currentCmd].op == OP_ELSE && depth == 1) {
-          currentCmd++;  
-          return;
-        }
+        else if (program[currentCmd].op == OP_ELSE && depth == 1) { currentCmd++; return; }
       }
       return;
     }
@@ -350,102 +409,90 @@ void executeProgram() {
     return;
   }
 
-  else if (cmd.op == OP_ENDIF) {
-    currentCmd++;
-    return;
-  }
+  else if (cmd.op == OP_ENDIF) { currentCmd++; return; }
+
   else if (cmd.op == OP_ELSE) {
-  // IF was true → skip ELSE block
-  int depth = 1;
-  while (depth > 0 && currentCmd < programLength - 1) {
-    currentCmd++;
-
-    if (program[currentCmd].op == OP_IF_CONDITION) depth++;
-    else if (program[currentCmd].op == OP_ENDIF) depth--;
-  }
-  currentCmd++;
-  return;
-  }
-  else if (cmd.op == OP_ENDIF) {
+    int depth = 1;
+    while (depth > 0 && currentCmd < programLength - 1) {
+      currentCmd++;
+      if (program[currentCmd].op == OP_IF_CONDITION) depth++;
+      else if (program[currentCmd].op == OP_ENDIF) depth--;
+    }
     currentCmd++;
     return;
   }
 
-  if (cmd.op == OP_REPEAT_N_TIMES) {
-    if (stackPtr < 4) { 
+  else if (cmd.op == OP_SET_VARIABLE) {
+    variables[cmd.data[0]] = pop();
+    clearStack();
+    currentCmd++;
+  }
+
+  else if (cmd.op == OP_CHANGE_VARIABLE) {
+    variables[cmd.data[0]] += pop();
+    clearStack();
+    currentCmd++;
+  }
+
+  else if (cmd.op == OP_REPEAT_N_TIMES) {
+    if (stackPtr < 4) {
       stackPtr++;
-      loopStack[stackPtr].startIndex = currentCmd + 1; 
+      loopStack[stackPtr].startIndex = currentCmd + 1;
       loopStack[stackPtr].remaining = cmd.data[0] - 1;
     }
     currentCmd++;
     return;
   }
+
   else if (cmd.op == OP_LOOP_END) {
     if (stackPtr >= 0) {
-      if (loopStack[stackPtr].remaining > 0) {
-        loopStack[stackPtr].remaining--;
-        currentCmd = loopStack[stackPtr].startIndex; 
-      } else {
-        stackPtr--; 
-        currentCmd++;
-      }
-    } else {
-      currentCmd++; 
-    }
+      if (loopStack[stackPtr].remaining > 0) { loopStack[stackPtr].remaining--; currentCmd = loopStack[stackPtr].startIndex; }
+      else { stackPtr--; currentCmd++; }
+    } else { currentCmd++; }
     return;
   }
 
-  if (cmd.op == 0x00) {
-    controlDevice(cmd.data[0], cmd.data[1]);
-    currentCmd++;
-  }
+  else if (cmd.op == 0x00) { controlDevice(cmd.data[0], cmd.data[1]); currentCmd++; }
+
   else if (cmd.op == 0x02) {
     delayDuration = toULong(cmd.data[0], cmd.data[1], cmd.data[2], cmd.data[3]);
     delayStart = millis();
     waiting = true;
   }
+
   else if (cmd.op == OP_SET_LED_COLOR) {
     lights.r = cmd.data[0]; lights.g = cmd.data[1]; lights.b = cmd.data[2];
-    for(int i=0; i<NUM_LEDS; i++) pixels[i].overrideColor = false;
-    renderLights();
-    currentCmd++;
-  }
-  else if (cmd.op == OP_SET_LED_BRIGHTNESS) {
-    lights.brightness = min((byte)cmd.data[0], (byte)100);
-    renderLights();
-    currentCmd++;
-  }
-  else if (cmd.op == OP_SET_LED_PIXEL_COLOR) {
-    byte i = cmd.data[0];
-    setPixels[i] = 1;
-    setColours[i*3] = cmd.data[1];
-    setColours[i*3+1] = cmd.data[2];
-    setColours[i*3+2] = cmd.data[3];
-    currentCmd++;
-  }
-  else if (cmd.op == OP_SET_LED_PIXEL_BRIGHTNESS) {
-    pixels[cmd.data[0]].brightness = min((byte)cmd.data[1], (byte)100);
-    renderLights();
-    currentCmd++;
-  }
-  else if (cmd.op == OP_SET_LED_PIXEL_ONOFF) {
-    pixels[cmd.data[0]].on = cmd.data[1];
-    renderLights();
-    currentCmd++;
-  }
-  else if (cmd.op == OP_CLEAR_PIXELS) {
+    lights.on = true;
     for (int i = 0; i < NUM_LEDS; i++) {
-      pixels[i].on = false;
-      pixels[i].overrideColor = false;
+      pixels[i].overrideColor = false; pixels[i].on = true;
+      setPixels[i] = 0; setColours[i*3] = 0; setColours[i*3+1] = 0; setColours[i*3+2] = 0;
     }
     renderLights();
     currentCmd++;
   }
-  else {
+
+  else if (cmd.op == OP_SET_LED_BRIGHTNESS) { lights.brightness = min((byte)cmd.data[0], (byte)100); renderLights(); currentCmd++; }
+
+  else if (cmd.op == OP_SET_LED_PIXEL_COLOR) {
+    byte i = cmd.data[0];
+    setPixels[i] = 1;
+    setColours[i*3] = cmd.data[1]; setColours[i*3+1] = cmd.data[2]; setColours[i*3+2] = cmd.data[3];
     currentCmd++;
   }
-  
-  if (previousOp == OP_SET_LED_PIXEL_COLOR && currentOp != OP_SET_LED_PIXEL_COLOR) {
+
+  else if (cmd.op == OP_SET_LED_PIXEL_BRIGHTNESS) { pixels[cmd.data[0]].brightness = min((byte)cmd.data[1], (byte)100); renderLights(); currentCmd++; }
+
+  else if (cmd.op == OP_SET_LED_PIXEL_ONOFF) { pixels[cmd.data[0]].on = cmd.data[1]; renderLights(); currentCmd++; }
+
+  else if (cmd.op == OP_CLEAR_PIXELS) {
+    for (int i = 0; i < NUM_LEDS; i++) { pixels[i].on = false; pixels[i].overrideColor = false; }
+    renderLights();
+    currentCmd++;
+  }
+
+  else { currentCmd++; }
+
+  if (previousOp == OP_SET_LED_PIXEL_COLOR && currentOp != OP_SET_LED_PIXEL_COLOR && currentOp != OP_SET_LED_COLOR) {
     renderSetPixels();
   }
   previousOp = cmd.op;
@@ -457,6 +504,14 @@ void storeCommand(byte op, byte d1, byte d2, byte d3, byte d4) {
 }
 
 void saveProgramToEEPROM() {
+  Serial.println(">>> RAM program contents:");
+  for (int i = 0; i < programLength; i++) {
+    Serial.printf("  [%d] Op:0x%02X  %d,%d,%d,%d\n", i,
+      program[i].op,
+      program[i].data[0], program[i].data[1],
+      program[i].data[2], program[i].data[3]);
+  }
+
   bool needsUpdate = false;
   Serial.println(">>> EEPROM Check: Comparing incoming program with stored memory...");
   if (extEEPROM_read(0) != (byte)programLength) {
@@ -509,7 +564,9 @@ void loadProgramFromEEPROM() {
   loopProgram = extEEPROM_read(2 + programLength * CMD_SIZE);
 }
 
-void handleIncomingByte(byte b) {
+void handleIncomingByte(byte b) {  
+  if (runningFromEEPROM && !receivingProgram && b > 0x0F && b != 0xFF) return;
+
   // 1. End of program check
   if (b == 0xFF) {
     if (programLength > 0) {

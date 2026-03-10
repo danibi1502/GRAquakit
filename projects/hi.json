@@ -1,0 +1,115 @@
+{
+  "workspace": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "forever",
+          "id": "Bw7ya@5Pz:6H,ynU_F_~",
+          "x": 104,
+          "y": 728,
+          "inputs": {
+            "DO": {
+              "block": {
+                "type": "variables_set",
+                "id": "cVT8{x),_Gzd)R+1eQN$",
+                "fields": {
+                  "VAR": {
+                    "id": "8b96,be8FH=J3)H=YU1+"
+                  }
+                },
+                "inputs": {
+                  "VALUE": {
+                    "block": {
+                      "type": "math_number",
+                      "id": "G%-:nSmC2lX+sT#rA-Sm",
+                      "fields": {
+                        "NUM": 8
+                      }
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "type": "if_else",
+                    "id": "FcWa(/Q:j9(:wdukwK2E",
+                    "inputs": {
+                      "CONDITION": {
+                        "block": {
+                          "type": "logic_compare",
+                          "id": "tJnrjnJLR-Rv~{Jja4Ht",
+                          "fields": {
+                            "OP": "GTE"
+                          },
+                          "inputs": {
+                            "A": {
+                              "shadow": {
+                                "type": "math_number",
+                                "id": "/G`AM[;[!|fED[?6h}|/",
+                                "fields": {
+                                  "NUM": 0
+                                }
+                              },
+                              "block": {
+                                "type": "variables_get",
+                                "id": "Z([.g03*Cfx;_F$v;H4V",
+                                "fields": {
+                                  "VAR": {
+                                    "id": "8b96,be8FH=J3)H=YU1+"
+                                  }
+                                }
+                              }
+                            },
+                            "B": {
+                              "shadow": {
+                                "type": "math_number",
+                                "id": "F4R/h1AKJF[B`A3ac6at",
+                                "fields": {
+                                  "NUM": 3
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "IF_DO": {
+                        "block": {
+                          "type": "turn_device",
+                          "id": "[/Q`l(lY}[{23y[|mQ7~",
+                          "fields": {
+                            "DEVICE": "1",
+                            "STATE": "1"
+                          }
+                        }
+                      },
+                      "ELSE_DO": {
+                        "block": {
+                          "type": "turn_device",
+                          "id": "JWh4/)uP6Vg*FWd$=0v7",
+                          "fields": {
+                            "DEVICE": "1",
+                            "STATE": "0"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "variables": [
+      {
+        "name": "x",
+        "id": "8b96,be8FH=J3)H=YU1+"
+      },
+      {
+        "name": "hi",
+        "id": "z{ZaqIZ2}qU{EGr2aOU]"
+      }
+    ]
+  }
+}

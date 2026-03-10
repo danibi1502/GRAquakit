@@ -13,7 +13,7 @@
     :root { --nav-height: 64px; --accent: #0ea5a4; --bg: #f6f8fa; --nav-bg: #ffffff; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Poppins", sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-    .nav { height: var(--nav-height); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: var(--nav-bg); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .nav { height: var(--nav-height); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: var(--nav-bg); box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin: 0 auto; width: 100%;}
     .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--accent); font-weight: 600; }
     .logo .icon { width: 36px; height: 36px; border-radius: 8px; display: inline-grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--accent), #06b6d4); }
     .view-select { padding: 8px 10px; border-radius: 8px; border: 1px solid #e6eef2; font-weight: 600; }
@@ -25,43 +25,197 @@
     .status { font-weight: 600; padding: 6px 12px; border-radius: 12px; font-size: 14px; white-space: nowrap; flex-shrink: 0; min-width: fit-content;}
     .status.connected { color: #16a34a; background: #dcfce7; border: 1px solid #86efac; }
     .status.disconnected { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; }
+    /* Home View Styles */
+    #homeView { padding: 40px; height: 100vh; overflow-y: auto; }
+    .home-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 15px;}
+    .new-btn { background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; }
+    .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+    .project-card { background: white; border: 1px solid #e6eef2; border-radius: 12px; padding: 20px; cursor: pointer; transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .project-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+    .project-card .img-placeholder { width: 100%; height: 100px; background: #f0f4f8; border-radius: 8px; display: grid; place-items: center; font-size: 30px; }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .modal-box {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .modal-box input {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+    .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .card-actions button {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+    }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #222;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: 0.3s;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    button {
+      cursor: pointer;
+    }
+
+    /* Variable prompt modal — replaces window.prompt() blocked in Electron */
+    #aq-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 9999;
+      align-items: center; justify-content: center;
+    }
+    #aq-modal-overlay.open { display: flex; }
+    #aq-modal {
+      background: #fff; border-radius: 12px; padding: 24px 28px;
+      width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      font-family: "Poppins", sans-serif;
+    }
+    #aq-modal h3 { margin: 0 0 12px; font-size: 16px; color: #1e293b; }
+    #aq-modal input {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #e6eef2;
+      border-radius: 8px; font-size: 15px; font-family: inherit;
+      outline: none; box-sizing: border-box;
+    }
+    #aq-modal input:focus { border-color: var(--accent); }
+    #aq-modal .aq-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    #aq-modal button {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    #aq-modal-cancel { background: #f1f5f9; color: #64748b; }
+    #aq-modal-ok { background: var(--accent); color: #fff; }
   </style>
 </head>
 <body>
 
-  <header class="nav">
-    <a class="logo" href="#"><span class="icon">A</span><span>AquaKit</span></a>
-
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <div id="connectionStatus" class="status disconnected">Disconnected</div>
-      <div id="depthBadge" class="status" style="background: #e0f2fe; color: #0369a1; margin-left:10px;">
-        Depth: -- cm
-      </div>
-      <div id="timeBadge" class="status" style="background: #fef9c3; color: #854d0e; margin-left:10px;">
-        Time: --:--
+  <!-- Variable name prompt modal (window.prompt is blocked in Electron) -->
+  <div id="aq-modal-overlay">
+    <div id="aq-modal">
+      <h3 id="aq-modal-msg">Variable name:</h3>
+      <input id="aq-modal-input" type="text" placeholder="e.g. myCount" autocomplete="off" />
+      <div class="aq-btns">
+        <button id="aq-modal-cancel">Cancel</button>
+        <button id="aq-modal-ok">OK</button>
       </div>
     </div>
+  </div>
 
-    <!-- <div id="connectionStatus" class="status disconnected">Disconnected</div> -->
-
-    <select id="view" class="view-select">
-      <option value="blocks">Blocks</option>
-      <option value="code">Code View</option>
-    </select>
-    <div>
-      <button id="connectBtn" class="play">🔗</button>
-      <button id="playBtn" class="play">▶</button>
+  <div id="homeView">
+    <header class="nav">
+      <a class="logo" href="#"><span class="icon">A</span><span>AquaKit</span></a>
+    </header>
+    <div class="home-content">
+      <div class="home-header">
+        <h1>My Projects</h1>
+        <button id="newProjectBtn" class="new-btn">+ New Project</button>
+      </div>
+      <div id="projectGallery" class="project-grid">
+        </div>
     </div>
-    <select id="connectionMode" class="view-select">
-      <option value="serial">USB / Serial</option>
-      <option value="ble">Bluetooth (BLE)</option>
-    </select>
-  </header>
+  </div>
+
+  <div id="createModal" class="modal">
+    <div class="modal-box">
+      <h2>Create New Project</h2>
+      <input type="text" id="projectNameInput" placeholder="Project name">
+      <div class="modal-actions">
+        <button id="confirmCreate" class="primary">Create</button>
+        <button onclick="closeCreateModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="renameModal" class="modal">
+    <div class="modal-box">
+      <h2>Rename Project</h2>
+      <input type="text" id="renameProjectInput" placeholder="New project name">
+      <div class="modal-actions">
+        <button id="confirmRename" class="primary">Rename</button>
+        <button onclick="closeRenameModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="editorView" style="display: none;">
+    <header class="nav">
+      <button id="backToHome" style="background:none; border:none; cursor:pointer; font-size:20px;">←</button>
+
+      <a class="logo" href="#"><span class="icon">A</span><span>AquaKit</span></a>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        <div id="depthBadge" class="status" style="background: #e0f2fe; color: #0369a1; margin-left:10px;">
+          Depth: -- cm
+        </div>
+        <div id="timeBadge" class="status" style="background: #fef9c3; color: #854d0e; margin-left:10px;">
+          Time: --:--
+        </div>
+      </div>
+
+      <!-- <div id="connectionStatus" class="status disconnected">Disconnected</div> -->
+
+      <select id="view" class="view-select">
+        <option value="blocks">Blocks</option>
+        <option value="code">Code View</option>
+      </select>
+      <div>
+        <button id="connectBtn" class="play">🔗</button>
+        <button id="playBtn" class="play">▶</button>
+        <button id="saveBtn" class="play">💾</button>
+      </div>
+      <select id="connectionMode" class="view-select">
+        <option value="serial">USB / Serial</option>
+        <option value="ble">Bluetooth (BLE)</option>
+      </select>
+    </header>
+  </div>
+  
 
   <main>
     <div id="blocksArea"><div id="blocklyDiv"></div></div>
     <div id="editorWrap" style="display:none;"><textarea id="editor" readonly></textarea></div>
     <!-- <input type="color" id="pixel-color-picker"> -->
+    <div id="toast" class="toast"></div>
   </main>
 
   <xml id="toolbox" style="display:none">
@@ -72,11 +226,22 @@
     </category>
     <category name="Logic" colour="#FF0000">
       <block type="if_block"></block>
-      <block type="logic_compare"></block>
+      <block type="if_else"></block>
+      <block type="logic_compare">
+        <value name="A">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+        <value name="B">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
       <block type="logic_operation"></block>
       <block type="block_true"></block>
       <block type="block_false"></block>
-      <block type="if_else"></block>
     </category>
     <category name="Control" colour="#f1c40f"><block type="delay"></block></category>
     <category name="Devices" colour="#9b59b6">
@@ -85,7 +250,32 @@
       <block type="set_pixel_color"></block>
       <block type="ring_pattern_block"></block>
     </category>
-    <category name="Variables" colour="#ff4da6" custom="VARIABLE"></category>
+    <category name="Math" colour="#5b67a5">
+      <block type="math_number"><field name="NUM">0</field></block>
+      <block type="math_arithmetic_custom">
+        <value name="A">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+        <value name="B">
+          <shadow type="math_number">
+            <field name="NUM">0</field>
+          </shadow>
+        </value>
+      </block>
+      <block type="math_random_int_custom">
+        <value name="FROM">
+          <shadow type="math_number"><field name="NUM">1</field></shadow>
+        </value>
+        <value name="TO">
+          <shadow type="math_number"><field name="NUM">10</field></shadow>
+        </value>
+      </block>
+      <block type="math_single_custom"></block>
+      <block type="time_to_minutes"></block>
+    </category>
+    <category name="Variables" colour="#ff4da6" custom="VARIABLE_DYNAMIC"></category>
     <category name="Sensors" colour="#3498db">
       <block type="get_water_depth"></block>
       <block type="get_rtc_time"></block>
@@ -93,10 +283,14 @@
   </xml>
 
   <script>
-    let currentMode = 'serial'; // Default
-    const { SerialPort } = require('serialport'); // Ensure this is available in your Electron environment
-    const { ReadlineParser } = require('@serialport/parser-readline');
+    const fs = require('fs');
+    const path = require('path');
+    const PROJECTS_DIR = path.join(__dirname, 'projects');
 
+    // Create projects folder if it doesn't exist
+    if (!fs.existsSync(PROJECTS_DIR)) fs.mkdirSync(PROJECTS_DIR);
+
+    let currentProjectFile = null;
     let workspace = null;
     let port = null;
     let writer = null;
@@ -104,791 +298,1133 @@
     let bleCharacteristic = null;
     const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
     const CHARACTERISTIC_UUID_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+    // --- Project Management Functions ---
 
-    class FieldLedRing extends Blockly.Field {
-      constructor(value, validator) {
-          const defaultValue = Array(24).fill('#000000').join(',');
-          super(value || defaultValue, validator);
-          this.size_ = new Blockly.utils.Size(300, 300);
-          this.SERIALIZABLE = true;
-      }
-
-      static fromJson(options) {
-          return new FieldLedRing(options['value']);
-      }
-
-      // CRITICAL: Tells Blockly this field is clickable
-      isClickable() { return true; }
-
-      initView() {
-        this.group_ = Blockly.utils.dom.createSvgElement('g', {
-            'class': 'fieldLedGroup'
-        }, this.fieldGroup_);
-
-        // Background Circle
-        Blockly.utils.dom.createSvgElement('circle', {
-            'cx': 150, 'cy': 150, 'r': 130,
-            'fill': '#222', 'stroke': '#111', 'stroke-width': '2'
-        }, this.group_);
-
-        // --- NEW: CENTER COLOR PICKER ---
-        // We embed the HTML input directly into the SVG center
-        const foreignObject = Blockly.utils.dom.createSvgElement('foreignObject', {
-            'x': 110, 'y': 110, 'width': 80, 'height': 80
-        }, this.group_);
-
-        const pickerDiv = document.createElement('div');
-        pickerDiv.style.width = '100%';
-        pickerDiv.style.height = '100%';
-        pickerDiv.style.display = 'flex';
-        pickerDiv.style.alignItems = 'center';
-        pickerDiv.style.justifyContent = 'center';
-
-        const picker = document.createElement('input');
-        picker.type = 'color';
-        picker.id = 'inner-color-picker';
-        picker.value = '#eeeeee';
-        picker.style.width = '80px';
-        picker.style.height = '80px';
-        picker.style.cursor = 'pointer';
-        picker.style.border = 'none';
-        picker.style.background = 'none';
-        
-        // Prevent block dragging when clicking the picker
-        picker.onmousedown = (e) => e.stopPropagation();
-
-        pickerDiv.appendChild(picker);
-        foreignObject.appendChild(pickerDiv);
-        this.internalPicker = picker;
-
-        // --- LED GENERATION ---
-        this.ledElements = [];
-        const radius = 100;
-        const centerX = 150;
-        const centerY = 150;
-
-        for (let i = 0; i < 24; i++) {
-            const angle = (i / 24) * 2 * Math.PI - Math.PI / 2;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-
-            const led = Blockly.utils.dom.createSvgElement('circle', {
-                'cx': x, 'cy': y, 'r': 12,
-                'fill': '#000000',
-                'stroke': '#555',
-                'stroke-width': '1',
-                'style': 'cursor: pointer; pointer-events: all;'
-            }, this.group_);
-
-            // Use the internal picker in the center
-            Blockly.browserEvents.conditionalBind(led, 'mousedown', this, (e) => {
-                e.stopPropagation(); 
-                const color = this.internalPicker.value;
-                this.setLedColor(i, color);
-            });
-
-            led.onmouseenter = () => led.setAttribute('stroke', '#ffffff');
-            led.onmouseleave = () => led.setAttribute('stroke', '#555');
-
-            this.ledElements.push(led);
-          }
-          this.updateView_();
-      }
-
-      setLedColor(index, color) {
-          const colors = this.getValue().split(',');
-          // Toggle logic: If clicking the same color, turn it off (black)
-          if (colors[index] === color) {
-              colors[index] = '#000000';
-          } else {
-              colors[index] = color;
-          }
-          this.setValue(colors.join(','));
-          this.updateView_();
-      }
-
-      updateView_() {
-          if (!this.ledElements) return;
-          const colors = this.getValue().split(',');
-          colors.forEach((color, i) => {
-              if (this.ledElements[i]) {
-                  this.ledElements[i].setAttribute('fill', color);
-              }
-          });
-      }
-
-      getSize() { return this.size_; }
+    function showHome() {
+        document.getElementById('homeView').style.display = 'block';
+        document.getElementById('editorView').style.display = 'none';
+        renderProjectGallery();
     }
 
-    Blockly.fieldRegistry.register('field_led_ring', FieldLedRing);
-    /*
-    Blockly.Blocks['canvas_block'] = {
-      init: function() {
-        this.appendDummyInput()
-            .appendField("Canvas:")
-            .appendField(new FieldCanvas(""), "CANVAS_FIELD");
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(230);
-        this.setTooltip("A blank SVG canvas inside a block");
-      }
-    };
-    */
+    function openProject(fileName) {
+        currentProjectFile = fileName;
+        const filePath = path.join(PROJECTS_DIR, fileName);
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        
+        document.getElementById('homeView').style.display = 'none';
+        document.getElementById('editorView').style.display = 'flex';
+        //document.getElementById('currentProjectName').textContent = fileName.replace('.json', '');
+        const nameLabel = document.getElementById('currentProjectName');
+        if (nameLabel) nameLabel.textContent = fileName.replace('.json', '');
+        
+        // Load blocks into workspace
+        Blockly.serialization.workspaces.load(data.workspace, workspace);
 
-    // 2. Your Exact Block Definitions (with field_neopixel removed)
-    Blockly.defineBlocksWithJsonArray([
-      {
-        "type": "on_start",
-        "message0": "on start %1 %2",
-        "args0": [
-          { "type": "input_dummy" },
-          { "type": "input_statement", "name": "DO" }
-        ],
-        "colour": "#45b39d",
-        "tooltip": "Run this block once when the program starts"
-      },
-      {
-        "type": "forever",
-        "message0": "forever %1 %2",
-        "args0": [
-          { "type": "input_dummy" },
-          { "type": "input_statement", "name": "DO" }
-        ],
-        "colour": "#f39c12",
-        "tooltip": "Repeat the blocks inside forever"
-      },
-      {
-        "type": "delay",
-        "message0": "delay %1 %2",
-        "args0": [
-          {
-            "type": "field_number",
-            "name": "DELAY_TIME",
-            "value": 1000,
-            "min": 0,
-            "max": 4294967295
-          },
-          {
-            "type": "field_dropdown",
-            "name": "UNIT",
-            "options": [
-              ["milliseconds", "ms"],
-              ["seconds", "s"],
-              ["minutes", "m"]
-            ]
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#f1c40f",
-        "tooltip": "Wait for some time before continuing"
-      },
-      {
-        "type": "turn_device",
-        "message0": "turn %1 %2",
-        "args0": [
-          {
-            "type": "field_dropdown",
-            "name": "DEVICE",
-            "options": [
-              ["lights", "1"],
-              ["filter pump", "2"],
-              ["food dispenser", "3"],
-              ["water change pump", "4"]
-            ]
-          },
-          {
-            "type": "field_dropdown",
-            "name": "STATE",
-            "options": [
-              ["on", "1"],
-              ["off", "0"]
-            ]
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6",
-        "tooltip": "Turn a selected device on or off"
-      },
-      {
-        "type": "set_led_color",
-        "message0": "set lights color R %1 G %2 B %3",
-        "args0": [
-          { "type": "field_number", "name": "R", "value": 255, "min": 0, "max": 255 },
-          { "type": "field_number", "name": "G", "value": 255, "min": 0, "max": 255 },
-          { "type": "field_number", "name": "B", "value": 255, "min": 0, "max": 255 }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6",
-        "tooltip": "Set NeoPixel ring color"
-      },
-      {
-        "type": "set_led_brightness",
-        "message0": "set lights brightness %1 %",
-        "args0": [
-          {
-            "type": "field_number",
-            "name": "BRIGHTNESS",
-            "value": 100,
-            "min": 0,
-            "max": 100
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6",
-        "tooltip": "Set light brightness (does not turn lights on)"
-      },
-      {
-        "type": "set_pixel_color",
-        "message0": "set LED %1 color R %2 G %3 B %4",
-        "args0": [
-          { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 }, // Replaced field_neopixel with field_number
-          { "type": "field_number", "name": "R", "value": 255, "min": 0, "max": 255 },
-          { "type": "field_number", "name": "G", "value": 255, "min": 0, "max": 255 },
-          { "type": "field_number", "name": "B", "value": 255, "min": 0, "max": 255 }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6"
-      },
-      {
-        "type": "set_pixel_brightness",
-        "message0": "set LED %1 brightness %2 %",
-        "args0": [
-          { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 },
-          { "type": "field_number", "name": "BRIGHTNESS", "value": 100, "min": 0, "max": 100 }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6"
-      },
-      {
-        "type": "set_pixel_onoff",
-        "message0": "turn LED %1 %2",
-        "args0": [
-          { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 },
-          {
-            "type": "field_dropdown",
-            "name": "STATE",
-            "options": [
-              ["on", "1"],
-              ["off", "0"]
-            ]
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6"
-      },
-      {
-        "type": "ring_pattern_block",
-        "message0": "Set Ring Pattern %1",
-        "args0": [
-          {
-            "type": "field_led_ring",
-            "name": "RING_STATE"
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#9b59b6"
-      },
-      {
-        "type": "repeat_n_times",
-        "message0": "repeat %1 times %2 %3",
-        "args0": [
-          {
-            "type": "field_number",
-            "name": "COUNT",
-            "value": 5,
-            "min": 1,
-            "max": 255
-          },
-          { "type": "input_dummy" },
-          {
-            "type": "input_statement",
-            "name": "DO"
-          }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#f39c12",
-        "tooltip": "Repeat blocks a fixed number of times"
-      },
-      {
-        "type": "if_block",
-        "message0": "if %1 then %2",
-        "args0": [
-          { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
-          { "type": "input_statement", "name": "DO" }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": '#FF0000'
-      },
-      {
-        "type": "logic_compare",
-        "message0": "%1 %2 %3",
-        "args0": [
-          { "type": "field_number", "name": "A", "value": 0 },
-          {
-            "type": "field_dropdown", "name": "OP",
-            "options": [ ["=", "EQ"], ["<", "LT"], [">", "GT"], ['!=','NEQ'], ['<=','LTE'], ['>=','GTE'] ]
-          },
-          { "type": "field_number", "name": "B", "value": 0 }
-        ],
-        "output": "Boolean",
-        "colour": '#FF0000'
-      },
-      {
-        "type": "logic_operation",
-        "message0": "%1 %2 %3",
-        "args0": [
-          { "type": "input_value", "name": "A", "check": "Boolean" },
-          {
-            "type": "field_dropdown", "name": "OP",
-            "options": [ ["and", "AND"], ["or", "OR"] ]
-          },
-          { "type": "input_value", "name": "B", "check": "Boolean" }
-        ],
-        "inputsInline": true,
-        "output": "Boolean",
-        "colour": '#FF0000'
-      },
+        // Force Blockly to realize it is now visible
+        setTimeout(() => {
+            Blockly.svgResize(workspace);
+        }, 50);
+    }
 
-      {
-        "type": "block_true",
-        "message0": "true",
-        "output": "Boolean",
-        "colour": '#FF0000'
-      },
-      {
-        "type": "block_false",
-        "message0": "false",
-        "output": "Boolean",
-        "colour": '#FF0000'
-      },
-      {
-        "type": "if_else",
-        "message0": "if %1 then %2 else %3",
-        "args0": [
-          { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
-          { "type": "input_statement", "name": "IF_DO" },
-          { "type": "input_statement", "name": "ELSE_DO" }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": '#FF0000'
-      },
-      {
-        "type": "set_variable",
-        "message0": "set %1 to %2",
-        "args0": [
-          { "type": "field_variable", "name": "VAR", "variable": "item" },
-          { "type": "input_value", "name": "VALUE", check: "Number" }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#ff4da6"
-      },
-      {
-        "type": "change_variable",
-        "message0": "change %1 by %2",
-        "args0": [
-          { "type": "field_variable", "name": "VAR", "variable": "item" },
-          { "type": "input_value", "name": "VALUE", check: "Number" }
-        ],
-        "previousStatement": null,
-        "nextStatement": null,
-        "colour": "#ff4da6"
-      },
-      {
-        "type": "variable_get_custom",
-        "message0": "%1",
-        "args0": [
-          { "type": "field_variable", "name": "VAR", "variable": "item" }
-        ],
-        "output": "Number",
-        "colour": "#ff4da6"
-      },
-      {
-        "type": "get_water_depth",
-        "message0": "water depth (cm)",
-        "output": "Number",
-        "colour": "#3498db",
-        "tooltip": "Returns the current water level in centimeters"
-      },
-      {
-        "type": "get_rtc_time",
-        "message0": "current time",
-        "output": "String",
-        "colour": "#3498db",
-        "tooltip": "Returns the current time from the RTC (HH:MM)"
-      }
-    ]);
+    function saveProject() {
+        if (!currentProjectFile) return;
+        const state = Blockly.serialization.workspaces.save(workspace);
+        const filePath = path.join(PROJECTS_DIR, currentProjectFile);
+        fs.writeFileSync(filePath, JSON.stringify({ workspace: state }, null, 2));
+        // alert("Project Saved!");
+    }
 
-    // 3. Your Generators (Fixed String Literals)
-    Blockly.JavaScript['on_start'] = function(block) {
-      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
-      return '4,0,0,0,0\n' + statements;
-    };
+    function renderProjectGallery() {
+        const gallery = document.getElementById('projectGallery');
+        gallery.innerHTML = '';
+        const files = fs.readdirSync(PROJECTS_DIR).filter(f => f.endsWith('.json'));
 
-    Blockly.JavaScript['forever'] = function(block) {
-      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
-      return '3,0,0,0,0\n' + statements;
-    };
+        files.forEach(file => {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.innerHTML = `
+                <div class="img-placeholder">🐠</div>
+                <strong>${file.replace(".json","")}</strong>
+                <!-- <div style="font-weight:600">${file.replace('.json', '')}</div> -->
+                <div class="card-actions">
+                  <!-- <button onclick="event.stopPropagation(); renameProject('${file}')">Rename</button>
+                  <button onclick="event.stopPropagation(); deleteProject('${file}')">Delete</button> -->
+                  <button class="renameBtn">Rename</button>
+                  <button class="deleteBtn">Delete</button>
+                </div>
+            `;
+            card.onclick = () => openProject(file);
 
-    Blockly.JavaScript['delay'] = function(block) {
-      const delayTime = parseInt(block.getFieldValue('DELAY_TIME')) || 1000;
-      const unit = block.getFieldValue('UNIT');
-      let milliseconds = 0;
-      switch (unit) {
-        case 'ms': milliseconds = delayTime; break;
-        case 's': milliseconds = delayTime * 1000; break;
-        case 'm': milliseconds = delayTime * 60000; break;
-      }
-      const b1 = milliseconds & 0xFF;
-      const b2 = (milliseconds >> 8) & 0xFF;
-      const b3 = (milliseconds >> 16) & 0xFF;
-      const b4 = (milliseconds >> 24) & 0xFF;
-      return `2,${b1},${b2},${b3},${b4}\n`;
-    };
+            card.querySelector(".renameBtn").addEventListener("click", (e) => {
+              e.stopPropagation();
+              renameProject(file);
+            });
 
-    Blockly.JavaScript['turn_device'] = function(block) {
-      const device = block.getFieldValue('DEVICE');
-      const state = block.getFieldValue('STATE');
-      return `0,${device},${state},0,0\n`;
-    };
+            card.querySelector(".deleteBtn").addEventListener("click", (e) => {
+              e.stopPropagation();
+              deleteProject(file);
+            });
+            gallery.appendChild(card);
+        });
+    }
 
-    Blockly.JavaScript['set_led_color'] = function(block) {
-      return `5,${block.getFieldValue('R')},${block.getFieldValue('G')},${block.getFieldValue('B')},0\n`;
-    };
+    let currentMode = 'serial'; // Default
+      const { SerialPort } = require('serialport'); // Ensure this is available in your Electron environment
+      const { ReadlineParser } = require('@serialport/parser-readline');
 
-    Blockly.JavaScript['set_led_brightness'] = function(block) {
-      return `6,${block.getFieldValue('BRIGHTNESS')},0,0,0\n`;
-    };
-
-    Blockly.JavaScript['set_pixel_color'] = function(block) {
-      return `7,${block.getFieldValue('INDEX')},${block.getFieldValue('R')},${block.getFieldValue('G')},${block.getFieldValue('B')}\n`;
-    };
-
-    Blockly.JavaScript['set_pixel_brightness'] = function(block) {
-      return `8,${block.getFieldValue('INDEX')},${block.getFieldValue('BRIGHTNESS')},0,0\n`;
-    };
-
-    Blockly.JavaScript['set_pixel_onoff'] = function(block) {
-      return `9,${block.getFieldValue('INDEX')},${block.getFieldValue('STATE')},0,0\n`;
-    };
-
-    Blockly.JavaScript['ring_pattern_block'] = function(block) {
-      const state = block.getFieldValue('RING_STATE');
-      const colors = state.split(',');
-      let code = '';
-
-      // 1️⃣ Clear the entire ring (one command)
-      code += `10,0,0,0,0\n`;
-      
-      colors.forEach((hex, index) => {
-        // Only send if the pixel isn't black
-        if (hex !== '#000000') {
-          const r = parseInt(hex.slice(1, 3), 16);
-          const g = parseInt(hex.slice(3, 5), 16);
-          const b = parseInt(hex.slice(5, 7), 16);
-          // Command 7: Set individual pixel color
-          code += `7,${index},${r},${g},${b}\n`;
+      class FieldLedRing extends Blockly.Field {
+        constructor(value, validator) {
+            const defaultValue = Array(24).fill('#000000').join(',');
+            super(value || defaultValue, validator);
+            this.size_ = new Blockly.utils.Size(300, 300);
+            this.SERIALIZABLE = true;
         }
-      });
-      return code;
-    };
 
-    Blockly.JavaScript['repeat_n_times'] = function(block) {
-      const count = parseInt(block.getFieldValue('COUNT')) || 1;
-      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+        static fromJson(options) {
+            return new FieldLedRing(options['value']);
+        }
 
-      let code = '';
-      // Opcode 11: LOOP_START
-      // d1 = repeat count
-      code += `11,${count},0,0,0\n`;
-      
-      // The code inside the loop
-      code += statements;
+        // CRITICAL: Tells Blockly this field is clickable
+        isClickable() { return true; }
 
-      // Opcode 12: LOOP_END (OP_LOOP_END in your Arduino code)
-      code += `12,0,0,0,0\n`;
+        initView() {
+          this.group_ = Blockly.utils.dom.createSvgElement('g', {
+              'class': 'fieldLedGroup'
+          }, this.fieldGroup_);
 
-      return code;
-    };
+          // Background Circle
+          Blockly.utils.dom.createSvgElement('circle', {
+              'cx': 150, 'cy': 150, 'r': 130,
+              'fill': '#222', 'stroke': '#111', 'stroke-width': '2'
+          }, this.group_);
 
-    Blockly.JavaScript['if_block'] = function(block) {
-      // 1. Get the code from the block snapped into the condition slot
-      // This will return "1" or "0" based on the comparison
-      const conditionCode = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_ATOMIC) || '0';
-      const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+          // --- NEW: CENTER COLOR PICKER ---
+          // We embed the HTML input directly into the SVG center
+          const foreignObject = Blockly.utils.dom.createSvgElement('foreignObject', {
+              'x': 110, 'y': 110, 'width': 80, 'height': 80
+          }, this.group_);
 
-      let code = '';
-      // Opcode 20 (IF), Byte1 = condition result (1 or 0)
-      code += `32,${conditionCode},0,0,0\n`;
-      code += statements;
-      code += `33,0,0,0,0\n`; // Opcode 21 (ENDIF)
-      return code;
-    };
+          const pickerDiv = document.createElement('div');
+          pickerDiv.style.width = '100%';
+          pickerDiv.style.height = '100%';
+          pickerDiv.style.display = 'flex';
+          pickerDiv.style.alignItems = 'center';
+          pickerDiv.style.justifyContent = 'center';
 
-    // Add this to handle the "Comparison" blocks (e.g., 5 > 2)
-    Blockly.JavaScript['logic_compare'] = function(block) {
-      const left = parseInt(block.getFieldValue('A')) || '0';
-      const right = parseInt(block.getFieldValue('B')) || '0';
-      const op = block.getFieldValue('OP');
-  
-      // We evaluate the comparison here and return 1 or 0 to the IF block
-      const operators = { 'EQ': '==', 'NEQ': '!=', 'LT': '<', 'LTE': '<=', 'GT': '>', 'GTE': '>=' };
-      const result = eval(`${left} ${operators[op]} ${right}`) ? '1' : '0';
-      return [result, Blockly.JavaScript.ORDER_ATOMIC];
-    };
+          const picker = document.createElement('input');
+          picker.type = 'color';
+          picker.id = 'inner-color-picker';
+          picker.value = '#eeeeee';
+          picker.style.width = '80px';
+          picker.style.height = '80px';
+          picker.style.cursor = 'pointer';
+          picker.style.border = 'none';
+          picker.style.background = 'none';
+          
+          // Prevent block dragging when clicking the picker
+          picker.onmousedown = (e) => e.stopPropagation();
 
-    // Add this for the "True/False" dropdown block
-    Blockly.JavaScript['logic_boolean'] = function(block) {
-      const code = (block.getFieldValue('BOOL') === 'TRUE') ? '1' : '0';
-      return [code, Blockly.JavaScript.ORDER_ATOMIC];
-    };
-      // Generator for snap-in AND/OR logic
-    Blockly.JavaScript['logic_operation'] = function(block) {
-      const left = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_ATOMIC) || '0';
-      const right = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_ATOMIC) || '0';
-      const op = block.getFieldValue('OP');
-  
-      // Evaluation: 1 is true, 0 is false
-      const res = (op === 'AND') ? (left == '1' && right == '1') : (left == '1' || right == '1');
-      return [res ? '1' : '0', Blockly.JavaScript.ORDER_ATOMIC];
-    };
+          pickerDiv.appendChild(picker);
+          foreignObject.appendChild(pickerDiv);
+          this.internalPicker = picker;
 
-    // Generator for individual True/False blocks
-    Blockly.JavaScript['block_true'] = function(block) { return ['1', Blockly.JavaScript.ORDER_ATOMIC]; };
-    Blockly.JavaScript['block_false'] = function(block) { return ['0', Blockly.JavaScript.ORDER_ATOMIC]; };
+          // --- LED GENERATION ---
+          this.ledElements = [];
+          const radius = 100;
+          const centerX = 150;
+          const centerY = 150;
 
-    // Generator for IF-ELSE block
-    Blockly.JavaScript['if_else'] = function(block) {
-      const conditionCode = Blockly.JavaScript.valueToCode(block, 'CONDITION', Blockly.JavaScript.ORDER_ATOMIC) || '0';
-      const if_Statements = Blockly.JavaScript.statementToCode(block, 'IF_DO');
-      const else_Statements = Blockly.JavaScript.statementToCode(block, 'ELSE_DO');
+          for (let i = 0; i < 24; i++) {
+              const angle = (i / 24) * 2 * Math.PI - Math.PI / 2;
+              const x = centerX + radius * Math.cos(angle);
+              const y = centerY + radius * Math.sin(angle);
 
-      let code = '';
-      // Opcode 32 (IF), Byte1 = condition result (1 or 0)
-      code += `32, ${conditionCode},0,0,0\n`;
-      code += if_Statements;
-      code += `33,0,0,0,0\n`; // Opcode 33: ELSE
-      code += else_Statements;
-      code += `34,0,0,0,0\n`; // Opcode 34: ENDIF
-      return code;
-    }; 
-    Blockly.JavaScript['set_variable'] = function(block) {
-      const varId = block.getFieldValue('VAR');
-      const variable = Blockly.getMainWorkspace().getVariableById(varId);
-      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
-      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC ) || '0';
-      const value = parseInt(valueCode) || 0;
-      const low = value & 0xFF;
-      const high = (value >> 8) & 0xFF;
+              const led = Blockly.utils.dom.createSvgElement('circle', {
+                  'cx': x, 'cy': y, 'r': 12,
+                  'fill': '#000000',
+                  'stroke': '#555',
+                  'stroke-width': '1',
+                  'style': 'cursor: pointer; pointer-events: all;'
+              }, this.group_);
 
-      return `40,${varIndex},${low},${high},0\n`;
-    };
-    Blockly.JavaScript['change_variable'] = function(block) {
-      const varId = block.getFieldValue('VAR');
-      const variable = Blockly.getMainWorkspace().getVariableById(varId);
-      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
-      const valueCode = Blockly.JavaScript.valueToCode(block,'VALUE',Blockly.JavaScript.ORDER_ATOMIC) || '0';
-      const value = parseInt(valueCode) || 0;
-      const low = value & 0xFF;
-      const high = (value >> 8) & 0xFF;
+              // Use the internal picker in the center
+              Blockly.browserEvents.conditionalBind(led, 'mousedown', this, (e) => {
+                  e.stopPropagation(); 
+                  const color = this.internalPicker.value;
+                  this.setLedColor(i, color);
+              });
 
-      return `41,${varIndex},${low},${high},0\n`;
-    };
-    Blockly.JavaScript['variable_get_custom'] = function(block) {
-      const varId = block.getFieldValue('VAR');
-      const variable = Blockly.getMainWorkspace().getVariableById(varId);
-      const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
-      return [`50,${varIndex},0,0,0`, Blockly.JavaScript.ORDER_ATOMIC];
-    };
-    Blockly.JavaScript['get_water_depth'] = function(block) {
-      // We use the last known value from the sensor
-      const code = window.lastDepth || 0;
-      return [code, Blockly.JavaScript.ORDER_ATOMIC];
-    };
+              led.onmouseenter = () => led.setAttribute('stroke', '#ffffff');
+              led.onmouseleave = () => led.setAttribute('stroke', '#555');
 
-    Blockly.JavaScript['get_rtc_time'] = function(block) {
-      const code = "'" + (window.lastTime || "00:00") + "'";
-      return [code, Blockly.JavaScript.ORDER_ATOMIC];
-    };
-     
-    async function detectDevicePort() {
-      const ports = await SerialPort.list();
+              this.ledElements.push(led);
+            }
+            this.updateView_();
+        }
 
-      const devicePort = ports.find((p) => {
-        const name = `${p.manufacturer || ''} ${p.path || ''} ${p.friendlyName || ''}`.toLowerCase();
+        setLedColor(index, color) {
+            const colors = this.getValue().split(',');
+            // Toggle logic: If clicking the same color, turn it off (black)
+            if (colors[index] === color) {
+                colors[index] = '#000000';
+            } else {
+                colors[index] = color;
+            }
+            this.setValue(colors.join(','));
+            this.updateView_();
+        }
 
-        return (
-          name.includes('arduino') ||
-          name.includes('wch') ||
-          name.includes('ch340') ||
-          name.includes('usb-serial') ||
-          name.includes('1a86') || // CH340 vendor ID
-          name.includes('stmicroelectronics') ||
-          name.includes('ftdi') ||
-          name.includes('cp210')
-        );
-      });
-
-      if (!devicePort) {
-        console.error('Available ports:', ports);
-        throw new Error('No compatible device found');
-      }
-
-      console.log('✅ Found device on:', devicePort.path);
-      return devicePort.path;
-    }
-
-    async function connectToDevice() {
-      try {
-        const portPath = await detectDevicePort();
-
-        port = new SerialPort({
-          path: portPath,
-          baudRate: 115200,
-        });
-
-        parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
-
-        parser.on('data', (data) => {
-          const line = data.trim();
-          if (line.startsWith("VALUE:")) {
-            const parts = line.split("|");
-            parts.forEach(p => {
-                if (p.includes("DEPTH:")) {
-                    const val = p.split(":")[2];
-                    document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
-                    window.lastDepth = parseFloat(val);
-                }
-                if (p.includes("TIME:")) {
-                    const val = p.replace("TIME:", ""); 
-                    document.getElementById('timeBadge').textContent = `Time: ${val}`;
-                    window.lastTime = val;
+        updateView_() {
+            if (!this.ledElements) return;
+            const colors = this.getValue().split(',');
+            colors.forEach((color, i) => {
+                if (this.ledElements[i]) {
+                    this.ledElements[i].setAttribute('fill', color);
                 }
             });
-          } else {
-            console.log('Device Log:', line);
-          }
-        });
+        }
 
-        port.on('open', () => {
-          console.log('Serial port opened successfully');
-          window.serialConnected = true;
-          updateConnectionStatus(true);
-        });
-
-        port.on('error', (err) => {
-          console.error('Serial error:', err.message);
-          window.serialConnected = false;
-          updateConnectionStatus(false);
-        });
-
-        port.on('close', () => {
-          console.warn('Serial port closed');
-          window.serialConnected = false;
-          updateConnectionStatus(false);
-        });
-
-      } catch (err) {
-        console.error('Connection error:', err);
+        getSize() { return this.size_; }
       }
-    }
 
-    // --- 💡 Connection Status Indicator ---
-    const connectionStatusEl = document.getElementById('connectionStatus');
+      Blockly.fieldRegistry.register('field_led_ring', FieldLedRing);
+      /*
+      Blockly.Blocks['canvas_block'] = {
+        init: function() {
+          this.appendDummyInput()
+              .appendField("Canvas:")
+              .appendField(new FieldCanvas(""), "CANVAS_FIELD");
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(230);
+          this.setTooltip("A blank SVG canvas inside a block");
+        }
+      };
+      */
 
-    async function connectViaBluetooth() {
-      try {
-        console.log("Requesting Bluetooth Device...");
-        bleDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'AquaKit-Hybrid' }],
-          optionalServices: [SERVICE_UUID]
-        });
+      // 2. Your Exact Block Definitions (with field_neopixel removed)
+      // Remove built-in blocks we intentionally override
+      delete Blockly.Blocks['logic_compare'];
+      delete Blockly.Blocks['logic_operation'];
+      Blockly.defineBlocksWithJsonArray([
+        {
+          "type": "on_start",
+          "message0": "on start %1 %2",
+          "args0": [
+            { "type": "input_dummy" },
+            { "type": "input_statement", "name": "DO" }
+          ],
+          "colour": "#45b39d",
+          "tooltip": "Run this block once when the program starts"
+        },
+        {
+          "type": "forever",
+          "message0": "forever %1 %2",
+          "args0": [
+            { "type": "input_dummy" },
+            { "type": "input_statement", "name": "DO" }
+          ],
+          "colour": "#f39c12",
+          "tooltip": "Repeat the blocks inside forever"
+        },
+        {
+          "type": "delay",
+          "message0": "delay %1 %2",
+          "args0": [
+            {
+              "type": "field_number",
+              "name": "DELAY_TIME",
+              "value": 1000,
+              "min": 0,
+              "max": 4294967295
+            },
+            {
+              "type": "field_dropdown",
+              "name": "UNIT",
+              "options": [
+                ["milliseconds", "ms"],
+                ["seconds", "s"],
+                ["minutes", "m"]
+              ]
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#f1c40f",
+          "tooltip": "Wait for some time before continuing"
+        },
+        {
+          "type": "turn_device",
+          "message0": "turn %1 %2",
+          "args0": [
+            {
+              "type": "field_dropdown",
+              "name": "DEVICE",
+              "options": [
+                ["lights", "1"],
+                ["filter pump", "2"],
+                ["food dispenser", "3"],
+                ["water change pump", "4"]
+              ]
+            },
+            {
+              "type": "field_dropdown",
+              "name": "STATE",
+              "options": [
+                ["on", "1"],
+                ["off", "0"]
+              ]
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6",
+          "tooltip": "Turn a selected device on or off"
+        },
+        {
+          "type": "set_led_color",
+          "message0": "set lights color R %1 G %2 B %3",
+          "args0": [
+            { "type": "field_number", "name": "R", "value": 255, "min": 0, "max": 255 },
+            { "type": "field_number", "name": "G", "value": 255, "min": 0, "max": 255 },
+            { "type": "field_number", "name": "B", "value": 255, "min": 0, "max": 255 }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6",
+          "tooltip": "Set NeoPixel ring color"
+        },
+        {
+          "type": "set_led_brightness",
+          "message0": "set lights brightness %1 %",
+          "args0": [
+            {
+              "type": "field_number",
+              "name": "BRIGHTNESS",
+              "value": 100,
+              "min": 0,
+              "max": 100
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6",
+          "tooltip": "Set light brightness (does not turn lights on)"
+        },
+        {
+          "type": "set_pixel_color",
+          "message0": "set LED %1 color R %2 G %3 B %4",
+          "args0": [
+            { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 }, // Replaced field_neopixel with field_number
+            { "type": "field_number", "name": "R", "value": 255, "min": 0, "max": 255 },
+            { "type": "field_number", "name": "G", "value": 255, "min": 0, "max": 255 },
+            { "type": "field_number", "name": "B", "value": 255, "min": 0, "max": 255 }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6"
+        },
+        {
+          "type": "set_pixel_brightness",
+          "message0": "set LED %1 brightness %2 %",
+          "args0": [
+            { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 },
+            { "type": "field_number", "name": "BRIGHTNESS", "value": 100, "min": 0, "max": 100 }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6"
+        },
+        {
+          "type": "set_pixel_onoff",
+          "message0": "turn LED %1 %2",
+          "args0": [
+            { "type": "field_number", "name": "INDEX", "value": 0, "min": 0, "max": 23 },
+            {
+              "type": "field_dropdown",
+              "name": "STATE",
+              "options": [
+                ["on", "1"],
+                ["off", "0"]
+              ]
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6"
+        },
+        {
+          "type": "ring_pattern_block",
+          "message0": "Set Ring Pattern %1",
+          "args0": [
+            {
+              "type": "field_led_ring",
+              "name": "RING_STATE"
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#9b59b6"
+        },
+        {
+          "type": "repeat_n_times",
+          "message0": "repeat %1 times %2 %3",
+          "args0": [
+            {
+              "type": "field_number",
+              "name": "COUNT",
+              "value": 5,
+              "min": 1,
+              "max": 255
+            },
+            { "type": "input_dummy" },
+            {
+              "type": "input_statement",
+              "name": "DO"
+            }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#f39c12",
+          "tooltip": "Repeat blocks a fixed number of times"
+        },
+        {
+          "type": "if_block",
+          "message0": "if %1 then %2",
+          "args0": [
+            { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+            { "type": "input_statement", "name": "DO" }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": '#FF0000'
+        },
+        {
+          "type": "logic_compare",
+          "message0": "%1 %2 %3",
+          "args0": [
+            { "type": "input_value", "name": "A", "check": ["Number", "Variable"] },
+            {
+              "type": "field_dropdown", "name": "OP",
+              "options": [ ["=", "EQ"], ["<", "LT"], [">", "GT"], ['!=','NEQ'], ['<=','LTE'], ['>=','GTE'] ]
+            },
+            { "type": "input_value", "name": "B", "check": ["Number", "Variable"] }
+          ],
+          "inputsInline": true,
+          "output": "Boolean",
+          "colour": '#FF0000'
+        },
+        {
+          "type": "logic_operation",
+          "message0": "%1 %2 %3",
+          "args0": [
+            { "type": "input_value", "name": "A", "check": "Boolean" },
+            {
+              "type": "field_dropdown", "name": "OP",
+              "options": [ ["and", "AND"], ["or", "OR"] ]
+            },
+            { "type": "input_value", "name": "B", "check": "Boolean" }
+          ],
+          "inputsInline": true,
+          "output": "Boolean",
+          "colour": '#FF0000'
+        },
 
-        console.log("Connecting to GATT Server...");
-        const server = await bleDevice.gatt.connect();
+        {
+          "type": "block_true",
+          "message0": "true",
+          "output": "Boolean",
+          "colour": '#FF0000'
+        },
+        {
+          "type": "block_false",
+          "message0": "false",
+          "output": "Boolean",
+          "colour": '#FF0000'
+        },
+        {
+          "type": "if_else",
+          "message0": "if %1 then %2 else %3",
+          "args0": [
+            { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+            { "type": "input_statement", "name": "IF_DO" },
+            { "type": "input_statement", "name": "ELSE_DO" }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": '#FF0000'
+        },
+        {
+          "type": "set_variable",
+          "message0": "set %1 to %2",
+          "args0": [
+            { "type": "field_variable", "name": "VAR", "variable": "item" },
+            { "type": "input_value", "name": "VALUE", check: "Number" }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#ff4da6"
+        },
+        {
+          "type": "change_variable",
+          "message0": "change %1 by %2",
+          "args0": [
+            { "type": "field_variable", "name": "VAR", "variable": "item" },
+            { "type": "input_value", "name": "VALUE", check: "Number" }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#ff4da6"
+        },
+        {
+          "type": "variable_get_custom",
+          "message0": "%1",
+          "args0": [
+            { "type": "field_variable", "name": "VAR", "variable": "item" }
+          ],
+          "output": "Number",
+          "colour": "#ff4da6"
+        },
+        {
+          "type": "get_water_depth",
+          "message0": "water depth (cm)",
+          "output": "Number",
+          "colour": "#3498db",
+          "tooltip": "Returns the current water level in centimeters"
+        },
+        {
+          "type": "get_rtc_time",
+          "message0": "current time",
+          "output": "Number",
+          "colour": "#3498db",
+          "tooltip": "Returns the current time from the RTC (HH:MM)"
+        },
+        {
+          "type": "math_arithmetic_custom",
+          "message0": "%1 %2 %3",
+          "args0": [
+            { "type": "input_value", "name": "A", "check": ["Number", "Variable"] },
+            {
+              "type": "field_dropdown",
+              "name": "OP",
+              "options": [
+                ["+", "ADD"], ["-", "MINUS"], ["×", "MULTIPLY"], ["÷", "DIVIDE"], ["^", "POWER"], ["%", "MODULO"]
+              ]
+            },
+            { "type": "input_value", "name": "B", "check": ["Number", "Variable"] }
+          ],
+          "output": "Number",
+          "colour": "#5b67a5",
+          "inputsInline": true
+        },
+        {
+          "type": "math_random_int_custom",
+          "message0": "pick random from %1 to %2",
+          "args0": [
+            { "type": "input_value", "name": "FROM", "check": ["Number", "Variable"] },
+            { "type": "input_value", "name": "TO", "check": ["Number", "Variable"] }
+          ],
+          "output": "Number",
+          "colour": "#5b67a5",
+          "inputsInline": true
+        },
+        {
+          "type": "math_single_custom",
+          "message0": "%1 of %2",
+          "args0": [
+            {
+              "type": "field_dropdown",
+              "name": "OP",
+              "options": [
+                ["square root", "ROOT"], ["sin", "SIN"], ["cos", "COS"], ["tan", "TAN"],
+                ["asin", "ASIN"], ["acos", "ACOS"], ["atan", "ATAN"]
+              ]
+            },
+            { "type": "input_value", "name": "NUM", "check": ["Number", "Variable"] }
+          ],
+          "output": "Number",
+          "colour": "#5b67a5"
+        },
+        {
+          "type": "time_to_minutes",
+          "message0": "%1 : %2",
+          "args0": [
+            { "type": "field_number", "name": "HOURS", "value": 8, "min": 0, "max": 23 },
+            { "type": "field_number", "name": "MINUTES", "value": 0, "min": 0, "max": 59 }
+          ],
+          "output": "Number",
+          "colour": "#5b67a5",
+          "tooltip": "Convert a time (HH:MM) to minutes since midnight"
+        },
+      ]);
 
-        console.log("Getting Service...");
-        const service = await server.getPrimaryService(SERVICE_UUID);
+      // 3. Your Generators (Fixed String Literals)
+      Blockly.JavaScript['on_start'] = function(block) {
+        const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+        return '4,0,0,0,0\n' + statements;
+      };
 
-        console.log("Getting Characteristic...");
-        bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+      Blockly.JavaScript['forever'] = function(block) {
+        const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+        return '3,0,0,0,0\n' + statements;
+      };
 
-        updateConnectionStatus(true);
-        console.log("✅ BLE Connected!");
+      Blockly.JavaScript['delay'] = function(block) {
+        const delayTime = parseInt(block.getFieldValue('DELAY_TIME')) || 1000;
+        const unit = block.getFieldValue('UNIT');
+        let milliseconds = 0;
+        switch (unit) {
+          case 'ms': milliseconds = delayTime; break;
+          case 's': milliseconds = delayTime * 1000; break;
+          case 'm': milliseconds = delayTime * 60000; break;
+        }
+        const b1 = milliseconds & 0xFF;
+        const b2 = (milliseconds >> 8) & 0xFF;
+        const b3 = (milliseconds >> 16) & 0xFF;
+        const b4 = (milliseconds >> 24) & 0xFF;
+        return `2,${b1},${b2},${b3},${b4}\n`;
+      };
+
+      Blockly.JavaScript['turn_device'] = function(block) {
+        const device = block.getFieldValue('DEVICE');
+        const state = block.getFieldValue('STATE');
+        return `0,${device},${state},0,0\n`;
+      };
+
+      Blockly.JavaScript['set_led_color'] = function(block) {
+        const r = Math.min(parseInt(block.getFieldValue('R')) || 0, 254);
+        const g = Math.min(parseInt(block.getFieldValue('G')) || 0, 254);
+        const b = Math.min(parseInt(block.getFieldValue('B')) || 0, 254);
+        console.log("set_led_color R:", r, "G:", g, "B:", b);
+        return `5,${r},${g},${b},0\n`;
+      };
+
+      Blockly.JavaScript['set_led_brightness'] = function(block) {
+        const brightness = Math.min(parseInt(block.getFieldValue('BRIGHTNESS')) || 0, 254);
+        return `6,${brightness},0,0,0\n`;
+      };
+
+      Blockly.JavaScript['set_pixel_color'] = function(block) {
+        return `7,${block.getFieldValue('INDEX')},
+        ${Math.min(parseInt(block.getFieldValue('R')) || 0, 254)},
+        ${Math.min(parseInt(block.getFieldValue('G')) || 0, 254)},
+        ${Math.min(parseInt(block.getFieldValue('B')) || 0, 254)}\n`;
+      };
+
+      Blockly.JavaScript['set_pixel_brightness'] = function(block) {
+        const brightness = Math.min(parseInt(block.getFieldValue('BRIGHTNESS')) || 0, 254);
+        return `8,${block.getFieldValue('INDEX')},${brightness},0,0\n`;
+      };
+
+      Blockly.JavaScript['set_pixel_onoff'] = function(block) {
+        return `9,${block.getFieldValue('INDEX')},${block.getFieldValue('STATE')},0,0\n`;
+      };
+
+      Blockly.JavaScript['ring_pattern_block'] = function(block) {
+        const state = block.getFieldValue('RING_STATE');
+        const colors = state.split(',');
+        let code = '';
+
+        // 1️⃣ Clear the entire ring (one command)
+        code += `10,0,0,0,0\n`;
         
-        bleDevice.ongattserverdisconnected = () => {
-          console.warn("BLE Disconnected");
-          updateConnectionStatus(false);
-          bleCharacteristic = null;
-        };
-        console.log("Starting Notifications...");
-        await bleCharacteristic.startNotifications();
-
-        let bleBuffer = "";
-
-        bleCharacteristic.oncharacteristicvaluechanged = (event) => {
-          const decoder = new TextDecoder();
-          const chunk = decoder.decode(event.target.value);
-          bleBuffer += chunk;
-          // Only process if we have at least one complete line
-          if (bleBuffer.includes('\n')) {
-              const lines = bleBuffer.split('\n');
-              
-              // Keep the last partial piece in the buffer (usually an empty string)
-              bleBuffer = lines.pop(); 
-
-              lines.forEach(line => {
-                  const cleanLine = line.trim();
-                  if (!cleanLine.startsWith("VALUE:")) return;
-
-                  const parts = cleanLine.split("|");
-                  parts.forEach(p => {
-                      if (p.includes("DEPTH:")) {
-                          const val = p.split(":")[2]; // Splits VALUE:DEPTH:XX
-                          if (val) {
-                              document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
-                              window.lastDepth = parseFloat(val);
-                          }
-                      }
-                      if (p.includes("TIME:")) {
-                          const val = p.replace("TIME:", ""); 
-                          document.getElementById('timeBadge').textContent = `Time: ${val}`;
-                          window.lastTime = val;
-                      }
-                  });
-              });
+        colors.forEach((hex, index) => {
+          // Only send if the pixel isn't black
+          if (hex !== '#000000') {
+            const r = Math.min(parseInt(hex.slice(1, 3), 16) || 0, 254);
+            const g = Math.min(parseInt(hex.slice(3, 5), 16) || 0, 254);
+            const b = Math.min(parseInt(hex.slice(5, 7), 16) || 0, 254);
+            // Command 7: Set individual pixel color
+            code += `7,${index},${r},${g},${b}\n`;
           }
-        };
-      } catch (error) {
-        console.error("BLE Connection Error:", error);
-        alert("Bluetooth Connection Failed: " + error);
-      }
-    }
-    
-    function updateConnectionStatus(isConnected) {
-      if (isConnected) {
-        connectionStatusEl.textContent = "Connected";
-        connectionStatusEl.classList.remove("disconnected");
-        connectionStatusEl.classList.add("connected");
-      } else {
-        connectionStatusEl.textContent = "Disconnected";
-        connectionStatusEl.classList.remove("connected");
-        connectionStatusEl.classList.add("disconnected");
-      }
-    }
+        });
+        return code;
+      };
 
-    async function send() {
+      Blockly.JavaScript['repeat_n_times'] = function(block) {
+        const count = parseInt(block.getFieldValue('COUNT')) || 1;
+        const statements = Blockly.JavaScript.statementToCode(block, 'DO');
+
+        let code = '';
+        // Opcode 11: LOOP_START
+        // d1 = repeat count
+        code += `11,${count},0,0,0\n`;
+        
+        // The code inside the loop
+        code += statements;
+
+        // Opcode 12: LOOP_END (OP_LOOP_END in your Arduino code)
+        code += `12,0,0,0,0\n`;
+
+        return code;
+      };
+
+      Blockly.JavaScript['if_block'] = function(block) {
+
+        const conditionCode =
+          Blockly.JavaScript.valueToCode(block, 'CONDITION',
+            Blockly.JavaScript.ORDER_ATOMIC) || '';
+
+        const statements =
+          Blockly.JavaScript.statementToCode(block, 'DO') || '';
+
+        let code = '';
+
+        code += conditionCode;
+        code += `32,0,0,0,0\n`;
+        code += statements;
+        code += `34,0,0,0,0\n`;
+
+        return code;
+      };
+
+      // Add this to handle the "Comparison" blocks (e.g., 5 > 2)
+      Blockly.JavaScript['logic_compare'] = function(block) {
+
+        const left =
+          Blockly.JavaScript.valueToCode(block, 'A',
+            Blockly.JavaScript.ORDER_ATOMIC) || '';
+
+        const right =
+          Blockly.JavaScript.valueToCode(block, 'B',
+            Blockly.JavaScript.ORDER_ATOMIC) || '';
+
+        const op = block.getFieldValue('OP');
+
+        let opcode = 80;
+
+        switch(op) {
+          case 'EQ':  opcode = 80; break;
+          case 'LT':  opcode = 81; break;
+          case 'GT':  opcode = 82; break;
+          case 'NEQ': opcode = 83; break;
+          case 'LTE': opcode = 84; break;
+          case 'GTE': opcode = 85; break;
+        }
+
+        return [
+          left + right + `${opcode},0,0,0,0\n`,
+          Blockly.JavaScript.ORDER_ATOMIC
+        ];
+      };
+
+
+      // Add this for the "True/False" dropdown block
+      Blockly.JavaScript['logic_boolean'] = function(block) {
+        const code = (block.getFieldValue('BOOL') === 'TRUE') ? '1' : '0';
+        return [code, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+        // Generator for snap-in AND/OR logic
+      Blockly.JavaScript['logic_operation'] = function(block) {
+        const left = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_ATOMIC);
+        const right = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_ATOMIC);
+        const op = block.getFieldValue('OP');
+
+        const opcode = (op === 'AND') ? 90 : 91;
+
+        return [
+          left + right + `${opcode},0,0,0,0\n`,
+          Blockly.JavaScript.ORDER_ATOMIC
+        ];
+      };
+
+      // Generator for individual True/False blocks
+      Blockly.JavaScript['block_true']  = function(block) { return ['60,1,0,0,0\n', Blockly.JavaScript.ORDER_ATOMIC]; };
+      Blockly.JavaScript['block_false'] = function(block) { return ['60,0,0,0,0\n', Blockly.JavaScript.ORDER_ATOMIC]; };
+      
+      // Generator for IF-ELSE block
+      Blockly.JavaScript['if_else'] = function(block) {
+
+        const conditionCode =
+          Blockly.JavaScript.valueToCode(block, 'CONDITION',
+            Blockly.JavaScript.ORDER_ATOMIC) || '';
+
+        const ifStatements =
+          Blockly.JavaScript.statementToCode(block, 'IF_DO') || '';
+
+        const elseStatements =
+          Blockly.JavaScript.statementToCode(block, 'ELSE_DO') || '';
+
+        let code = '';
+
+        // 1️⃣ Expression FIRST (push values + comparison)
+        code += conditionCode;
+
+        // 2️⃣ IF opcode
+        code += `32,0,0,0,0\n`;
+
+        // 3️⃣ True branch
+        code += ifStatements;
+
+        // 4️⃣ ELSE
+        code += `33,0,0,0,0\n`;
+
+        // 5️⃣ False branch
+        code += elseStatements;
+
+        // 6️⃣ ENDIF
+        code += `34,0,0,0,0\n`;
+
+        return code;
+      };
+
+      Blockly.JavaScript['set_variable'] = function(block) {
+        const varId = block.getFieldValue('VAR');
+        const varIndex = Blockly.getMainWorkspace().getAllVariables()
+          .indexOf(Blockly.getMainWorkspace().getVariableById(varId));
+        const valueCode = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ATOMIC) || '60,0,0,0,0\n';
+        return valueCode + `40,${varIndex},0,0,0\n`;
+      };
+
+      Blockly.JavaScript['change_variable'] = function(block) {
+        const varId = block.getFieldValue('VAR');
+        const varIndex = Blockly.getMainWorkspace().getAllVariables()
+          .indexOf(Blockly.getMainWorkspace().getVariableById(varId));
+        const valueCode = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ATOMIC) || '60,0,0,0,0\n';
+        return valueCode + `41,${varIndex},0,0,0\n`;
+      };
+
+      Blockly.JavaScript['variable_get_custom'] = function(block) {
+        const varId = block.getFieldValue('VAR');
+        const variable = Blockly.getMainWorkspace().getVariableById(varId);
+        const varIndex = Blockly.getMainWorkspace().getAllVariables().indexOf(variable);
+        return [`61,${varIndex},0,0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      Blockly.JavaScript['variables_get'] = function(block) {
+        const varId = block.getFieldValue('VAR');
+        const varIndex = Blockly.getMainWorkspace().getAllVariables()
+          .indexOf(Blockly.getMainWorkspace().getVariableById(varId));
+        return [`61,${varIndex},0,0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      Blockly.JavaScript['variables_set'] = function(block) {
+        const varId = block.getFieldValue('VAR');
+        const varIndex = Blockly.getMainWorkspace().getAllVariables()
+          .indexOf(Blockly.getMainWorkspace().getVariableById(varId));
+        const valueCode = Blockly.JavaScript.valueToCode(block, 'VALUE', Blockly.JavaScript.ORDER_ATOMIC) || '60,0,0,0,0\n';
+        return valueCode + `40,${varIndex},0,0,0\n`;
+      };
+
+      Blockly.JavaScript['get_water_depth'] = function(block) {
+        return [`62,0,0,0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      Blockly.JavaScript['get_rtc_time'] = function(block) {
+        return [`63,0,0,0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      Blockly.JavaScript['math_number'] = function(block) {
+        const code = parseFloat(block.getFieldValue('NUM')) || '0';
+        return [`60,${code},0,0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      // 1. Operations Block Generator
+      Blockly.JavaScript['math_arithmetic_custom'] = function(block) {
+        const left = Blockly.JavaScript.valueToCode(block, 'A', Blockly.JavaScript.ORDER_ATOMIC);
+        const right = Blockly.JavaScript.valueToCode(block, 'B', Blockly.JavaScript.ORDER_ATOMIC);
+        const op = block.getFieldValue('OP');
+
+        let opcode = 70; // ADD default
+
+        switch(op) {
+          case 'ADD': opcode = 70; break;
+          case 'MINUS': opcode = 71; break;
+          case 'MULTIPLY': opcode = 72; break;
+          case 'DIVIDE': opcode = 73; break;
+          case 'MODULO': opcode = 74; break;
+        }
+
+        return [
+          left + right + `${opcode},0,0,0,0\n`,
+          Blockly.JavaScript.ORDER_ATOMIC
+        ];
+      };
+
+      // 2. Random Number Generator
+      Blockly.JavaScript['math_random_int_custom'] = function(block) {
+        const from = Blockly.JavaScript.valueToCode(block, 'FROM', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+        const to = Blockly.JavaScript.valueToCode(block, 'TO', Blockly.JavaScript.ORDER_ATOMIC) || '0';
+        
+        const min = Math.ceil(parseFloat(from));
+        const max = Math.floor(parseFloat(to));
+        const res = Math.floor(Math.random() * (max - min + 1)) + min;
+        
+        return [String(res), Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      // 3. Single Math Function Generator
+      Blockly.JavaScript['math_single_custom'] = function(block) {
+        const num = parseFloat(Blockly.JavaScript.valueToCode(block, 'NUM', Blockly.JavaScript.ORDER_ATOMIC) || '0');
+        const op = block.getFieldValue('OP');
+        
+        let res;
+        switch (op) {
+          case 'ROOT': res = Math.sqrt(num); break;
+          case 'SIN':  res = Math.sin(num * Math.PI / 180); break; // Converting to degrees for kids
+          case 'COS':  res = Math.cos(num * Math.PI / 180); break;
+          case 'TAN':  res = Math.tan(num * Math.PI / 180); break;
+          case 'ASIN': res = Math.asin(num) * 180 / Math.PI; break;
+          case 'ACOS': res = Math.acos(num) * 180 / Math.PI; break;
+          case 'ATAN': res = Math.atan(num) * 180 / Math.PI; break;
+          default: res = 0;
+        }
+        return [String(res), Blockly.JavaScript.ORDER_ATOMIC];
+      };
+
+      Blockly.JavaScript['time_to_minutes'] = function(block) {
+        const hours = parseInt(block.getFieldValue('HOURS')) || 0;
+        const minutes = parseInt(block.getFieldValue('MINUTES')) || 0;
+        const total = (hours * 60) + minutes;
+        const low = total & 0xFF;
+        const high = (total >> 8) & 0xFF;
+        return [`60,${low},${high},0,0\n`, Blockly.JavaScript.ORDER_ATOMIC];
+      };
+      
+      async function detectDevicePort() {
+        const ports = await SerialPort.list();
+
+        const devicePort = ports.find((p) => {
+          const name = `${p.manufacturer || ''} ${p.path || ''} ${p.friendlyName || ''}`.toLowerCase();
+
+          return (
+            name.includes('arduino') ||
+            name.includes('wch') ||
+            name.includes('ch340') ||
+            name.includes('usb-serial') ||
+            name.includes('1a86') || // CH340 vendor ID
+            name.includes('stmicroelectronics') ||
+            name.includes('ftdi') ||
+            name.includes('cp210')
+          );
+        });
+
+        if (!devicePort) {
+          console.error('Available ports:', ports);
+          throw new Error('No compatible device found');
+        }
+
+        console.log('✅ Found device on:', devicePort.path);
+        return devicePort.path;
+      }
+
+      async function connectToDevice() {
+        try {
+          const portPath = await detectDevicePort();
+
+          port = new SerialPort({
+            path: portPath,
+            baudRate: 115200,
+          });
+
+          parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+          parser.on('data', (data) => {
+            const line = data.trim();
+            if (line.startsWith("VALUE:")) {
+              const parts = line.split("|");
+              parts.forEach(p => {
+                  if (p.includes("DEPTH:")) {
+                      const val = p.split(":")[2];
+                      document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
+                      window.lastDepth = parseFloat(val);
+                  }
+                  if (p.includes("TIME:")) {
+                      const val = p.replace("TIME:", ""); 
+                      document.getElementById('timeBadge').textContent = `Time: ${val}`;
+                      window.lastTime = val;
+                  }
+              });
+            } else {
+              console.log('Device Log:', line);
+            }
+          });
+
+          port.on('open', () => {
+            console.log('Serial port opened successfully');
+            window.serialConnected = true;
+            updateConnectionStatus(true);
+          });
+
+          port.on('error', (err) => {
+            console.error('Serial error:', err.message);
+            window.serialConnected = false;
+            updateConnectionStatus(false);
+          });
+
+          port.on('close', () => {
+            console.warn('Serial port closed');
+            window.serialConnected = false;
+            updateConnectionStatus(false);
+          });
+
+        } catch (err) {
+          console.error('Connection error:', err);
+        }
+      }
+
+      // --- 💡 Connection Status Indicator ---
+      const connectionStatusEl = document.getElementById('connectionStatus');
+
+      async function connectViaBluetooth() {
+        try {
+          console.log("Requesting Bluetooth Device...");
+          bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ name: 'AquaKit-Hybrid' }],
+            optionalServices: [SERVICE_UUID]
+          });
+
+          console.log("Connecting to GATT Server...");
+          const server = await bleDevice.gatt.connect();
+
+          console.log("Getting Service...");
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          console.log("Getting Characteristic...");
+          bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+
+          updateConnectionStatus(true);
+          console.log("✅ BLE Connected!");
+          
+          bleDevice.ongattserverdisconnected = () => {
+            console.warn("BLE Disconnected");
+            updateConnectionStatus(false);
+            bleCharacteristic = null;
+          };
+          console.log("Starting Notifications...");
+          await bleCharacteristic.startNotifications();
+
+          let bleBuffer = "";
+
+          bleCharacteristic.oncharacteristicvaluechanged = (event) => {
+            const decoder = new TextDecoder();
+            const chunk = decoder.decode(event.target.value);
+            bleBuffer += chunk;
+            // Only process if we have at least one complete line
+            if (bleBuffer.includes('\n')) {
+                const lines = bleBuffer.split('\n');
+                
+                // Keep the last partial piece in the buffer (usually an empty string)
+                bleBuffer = lines.pop(); 
+
+                lines.forEach(line => {
+                    const cleanLine = line.trim();
+                    if (!cleanLine.startsWith("VALUE:")) return;
+
+                    const parts = cleanLine.split("|");
+                    parts.forEach(p => {
+                        if (p.includes("DEPTH:")) {
+                            const val = p.split(":")[2]; // Splits VALUE:DEPTH:XX
+                            if (val) {
+                                document.getElementById('depthBadge').textContent = `Depth: ${val} cm`;
+                                window.lastDepth = parseFloat(val);
+                            }
+                        }
+                        if (p.includes("TIME:")) {
+                            const val = p.replace("TIME:", ""); 
+                            document.getElementById('timeBadge').textContent = `Time: ${val}`;
+                            window.lastTime = val;
+                        }
+                    });
+                });
+            }
+          };
+        } catch (error) {
+          console.error("BLE Connection Error:", error);
+          alert("Bluetooth Connection Failed: " + error);
+        }
+      }
+      
+      function updateConnectionStatus(isConnected) {
+        if (isConnected) {
+          connectionStatusEl.textContent = "Connected";
+          connectionStatusEl.classList.remove("disconnected");
+          connectionStatusEl.classList.add("connected");
+        } else {
+          connectionStatusEl.textContent = "Disconnected";
+          connectionStatusEl.classList.remove("connected");
+          connectionStatusEl.classList.add("disconnected");
+        }
+      }
+
+      let fileToRename = ""; // Global variable to track which file we are changing
+
+      function renameProject(oldFile) {
+          fileToRename = oldFile; // Store the filename (e.g., "Project_1.json")
+          
+          // Pre-fill the input with the current name (minus .json)
+          document.getElementById("renameProjectInput").value = oldFile.replace('.json', '');
+          
+          // Show the modal
+          document.getElementById("renameModal").style.display = "flex";
+      }
+
+      function closeRenameModal() {
+          document.getElementById("renameModal").style.display = "none";
+      }
+
+      // Attach this listener inside your window.addEventListener('load', ...) block
+      document.getElementById("confirmRename").onclick = () => {
+          const newName = document.getElementById("renameProjectInput").value.trim();
+          if (!newName) return;
+
+          const newFile = `${newName}.json`;
+          const oldPath = path.join(PROJECTS_DIR, fileToRename);
+          const newPath = path.join(PROJECTS_DIR, newFile);
+
+          try {
+              if (fs.existsSync(newPath)) {
+                  alert("A project with that name already exists!");
+                  return;
+              }
+
+              fs.renameSync(oldPath, newPath);
+
+              // Keep the editor in sync if we renamed the open project
+              if (currentProjectFile === fileToRename) {
+                  currentProjectFile = newFile;
+                  const nameLabel = document.getElementById('currentProjectName');
+                  if (nameLabel) nameLabel.textContent = newName;
+              }
+
+              document.getElementById("renameModal").style.display = "none";
+              renderProjectGallery();
+              showToast("Project renamed");
+          } catch (err) {
+              console.error(err);
+              alert("Error renaming file.");
+          }
+      };
+
+      function deleteProject(file) {
+
+        if (!confirm("Delete this project?")) return;
+
+        fs.unlinkSync(path.join(PROJECTS_DIR, file));
+
+        renderProjectGallery();
+        showToast("Project deleted");
+      }
+      
+      function openCreateModal() {
+        document.getElementById("createModal").classList.add("show");
+      }
+
+      function closeCreateModal() {
+        document.getElementById("createModal").style.display = "none";
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.classList.add("show");
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 2000);
+      }
+
+      async function send() {
         if (!port || !port.isOpen) return alert("Connect first!");
         
         let code = Blockly.JavaScript.workspaceToCode(workspace) + "255,0,0,0,0\n"; // End with 0xFF
@@ -896,10 +1432,10 @@
         document.getElementById('editor').value = code;
         
         const allBytes = code.replace(/\n/g, ',')
-                         .split(',')
-                         .map(n => n.trim())
-                         .filter(n => n.length > 0)
-                         .map(n => parseInt(n));
+                        .split(',')
+                        .map(n => n.trim())
+                        .filter(n => n.length > 0)
+                        .map(n => parseInt(n));
 
         console.log("CLEAN BYTE ARRAY:", allBytes);
 
@@ -920,66 +1456,223 @@
         console.log("Program sent to device");
     }
 
-    // --- 5. INIT ---
-    function init() {
-      workspace = Blockly.inject('blocklyDiv', { toolbox: document.getElementById('toolbox'), renderer: 'zelos' });
+    // Custom prompt modal — window.prompt() is blocked in Electron
+    function aquaPrompt(message, defaultValue, callback) {
+      const overlay   = document.getElementById('aq-modal-overlay');
+      const input     = document.getElementById('aq-modal-input');
+      const msg       = document.getElementById('aq-modal-msg');
+      const okBtn     = document.getElementById('aq-modal-ok');
+      const cancelBtn = document.getElementById('aq-modal-cancel');
+
+      msg.textContent = message;
+      input.value = defaultValue || '';
+      overlay.classList.add('open');
+      input.focus();
+      input.select();
+
+      function cleanup() {
+        overlay.classList.remove('open');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        input.onkeydown = null;
+      }
+      okBtn.onclick     = () => { cleanup(); callback(input.value.trim() || null); };
+      cancelBtn.onclick = () => { cleanup(); callback(null); };
+      input.onkeydown   = (e) => {
+        if (e.key === 'Enter')  okBtn.click();
+        if (e.key === 'Escape') cancelBtn.click();
+      };
     }
 
-    document.getElementById('view').onchange = (e) => {
-      const isBlocks = e.target.value === 'blocks';
-      document.getElementById('blocksArea').style.display = isBlocks ? 'flex' : 'none';
-      document.getElementById('editorWrap').style.display = isBlocks ? 'none' : 'flex';
-      if (!isBlocks) document.getElementById('editor').value = Blockly.JavaScript.workspaceToCode(workspace);
-      Blockly.svgResize(workspace);
-    };
+    // Initialize
+    window.addEventListener('load', () => {
+      // Set prompt BEFORE inject so the Variables "Create variable" button works
+      Blockly.dialog.setPrompt(aquaPrompt);
 
-    // document.getElementById('connectBtn').onclick = connectToDevice;
-    // document.getElementById('playBtn').onclick = send;
-    // Listen for mode changes
-    document.getElementById('connectionMode').onchange = (e) => {
-        currentMode = e.target.value;
-        updateConnectionStatus(false); // Reset status visually on switch
-    };
+      Blockly.Blocks['variables_set'].init = function() {
+        this.jsonInit({
+          "type": "variables_set",
+          "message0": "set %1 to %2",
+          "args0": [
+            { "type": "field_variable", "name": "VAR" },
+            { "type": "input_value", "name": "VALUE" }
+          ],
+          "previousStatement": null,
+          "nextStatement": null,
+          "colour": "#ff4da6"
+        });
+      };
 
-    // Unified Connect Button
-    document.getElementById('connectBtn').onclick = async () => {
-        if (currentMode === 'serial') {
-            await connectToDevice();
-        } else {
-            await connectViaBluetooth();
+      Blockly.Blocks['variables_get'].init = function() {
+        this.jsonInit({
+          "type": "variables_get",
+          "message0": "%1",
+          "args0": [
+            { "type": "field_variable", "name": "VAR" }
+          ],
+          "output": null,
+          "colour": "#ff4da6"
+        });
+      };
+
+      workspace = Blockly.inject('blocklyDiv', { 
+          toolbox: document.getElementById('toolbox'), 
+          renderer: 'zelos' 
+      });
+        // ... your existing workspace init code ...
+
+      workspace.addChangeListener((event) => {
+        if (event.isUiEvent) return; // ignore UI-only events like scrolling
+        saveProject();
+      });
+
+      document.getElementById('view').onchange = (e) => {
+        const isBlocks = e.target.value === 'blocks';
+        document.getElementById('blocksArea').style.display = isBlocks ? 'flex' : 'none';
+        document.getElementById('editorWrap').style.display = isBlocks ? 'none' : 'flex';
+        if (!isBlocks) document.getElementById('editor').value = Blockly.JavaScript.workspaceToCode(workspace);
+        Blockly.svgResize(workspace);
+      };
+
+      // document.getElementById('connectBtn').onclick = connectToDevice;
+      // document.getElementById('playBtn').onclick = send;
+      // Listen for mode changes
+      document.getElementById('connectionMode').onchange = (e) => {
+          currentMode = e.target.value;
+          updateConnectionStatus(false); // Reset status visually on switch
+      };
+
+      // Unified Connect Button
+      document.getElementById('connectBtn').onclick = async () => {
+          if (currentMode === 'serial') {
+              await connectToDevice();
+          } else {
+              await connectViaBluetooth();
+          }
+      };
+
+      // Unified Send Button (Replaces the old 'send' function)
+      document.getElementById('playBtn').onclick = async () => {
+          // 1. Generate the bytes
+          const rawCode = Blockly.JavaScript.workspaceToCode(workspace);
+          const code = rawCode
+              .split('\n')
+              .filter(line => !line.trim().startsWith('var '))
+              .join('\n') + "255,0,0,0,0\n";
+          console.log("FULL GENERATED CODE:\n", code);
+          const allBytes = code.replace(/\n/g, ',')
+                              .split(',')
+                              .map(n => n.trim())
+                              .filter(n => n.length > 0 && !isNaN(n))
+                              .map(n => parseInt(n));
+          console.log("BYTE ARRAY:", allBytes);
+
+          if (currentMode === 'serial') {
+              if (!port || !port.isOpen) return alert("Connect USB first!");
+              // Send in 5-byte chunks for Serial
+              for (let i = 0; i < allBytes.length; i += 5) {
+                  port.write(Buffer.from(allBytes.slice(i, i + 5)));
+                  await new Promise(r => setTimeout(r, 50));
+              }
+          } else {
+              if (!bleCharacteristic) return alert("Connect Bluetooth first!");
+              // Send in chunks for BLE (Max 20 bytes per write)
+              for (let i = 0; i < allBytes.length; i += 20) {
+                  const chunk = new Uint8Array(allBytes.slice(i, i + 20));
+                  await bleCharacteristic.writeValue(chunk);
+                  await new Promise(r => setTimeout(r, 100)); // BLE needs a bit more time
+              }
+          }
+          console.log("Program sent!");
+      };
+
+      // --- Event Listeners ---
+      // 2. Set up Button Click Listeners (The fix for your null error)
+      document.getElementById('newProjectBtn').onclick = () => {
+        //console.log("New Project Clicked!"); // Check 1
+        //const name = "Project_" + Math.floor(Math.random() * 1000); // Fixed naming to avoid prompt() error
+        //currentProjectFile = `${name}.json`;
+        //workspace.clear();
+        //saveProject(); // Create the file
+        //openProject(currentProjectFile); // Enter the editor
+        document.getElementById("projectNameInput").value = "";
+        //openCreateModal();
+        document.getElementById("createModal").style.display = "flex";
+        //document.getElementById("createModal").classList.add("show");
+      };
+      document.getElementById("confirmCreate").onclick = () => {
+        const name = document.getElementById("projectNameInput").value.trim();
+
+        if (!name) return;
+
+        currentProjectFile = `${name}.json`;
+        workspace.clear();
+        saveProject();
+
+        closeCreateModal();
+        renderProjectGallery();
+
+        showToast("Project created");
+      };
+      document.getElementById('backToHome').onclick = showHome;
+      document.getElementById('saveBtn').onclick = saveProject;
+      workspace.registerButtonCallback('CREATE_VARIABLE', () => {
+        Blockly.Variables.createVariableButtonHandler(workspace);
+      });
+
+      workspace.registerToolboxCategoryCallback('VARIABLE_DYNAMIC', (workspace) => {
+        const xmlList = [];
+
+        const button = document.createElement('button');
+        button.setAttribute('text', 'Create Variable');
+        button.setAttribute('callbackKey', 'CREATE_VARIABLE');
+        xmlList.push(button);
+
+        const vars = workspace.getAllVariables();
+        if (vars.length > 0) {
+          vars.forEach(v => {
+            const getBlock = Blockly.utils.xml.createElement('block');
+            getBlock.setAttribute('type', 'variables_get');
+            const field = Blockly.utils.xml.createElement('field');
+            field.setAttribute('name', 'VAR');
+            field.textContent = v.name;
+            getBlock.appendChild(field);
+            xmlList.push(getBlock);
+          });
+
+          vars.forEach(v => {
+            const setBlock = Blockly.utils.xml.createElement('block');
+            setBlock.setAttribute('type', 'variables_set');
+            const field = Blockly.utils.xml.createElement('field');
+            field.setAttribute('name', 'VAR');
+            field.textContent = v.name;
+            setBlock.appendChild(field);
+            const value = Blockly.utils.xml.createElement('value');
+            value.setAttribute('name', 'VALUE');
+            const shadow = Blockly.utils.xml.createElement('shadow');
+            shadow.setAttribute('type', 'math_number');
+            const num = Blockly.utils.xml.createElement('field');
+            num.setAttribute('name', 'NUM');
+            num.textContent = '0';
+            shadow.appendChild(num);
+            value.appendChild(shadow);
+            setBlock.appendChild(value);
+            xmlList.push(setBlock);
+          });
         }
-    };
 
-    // Unified Send Button (Replaces the old 'send' function)
-    document.getElementById('playBtn').onclick = async () => {
-        // 1. Generate the bytes
-        const code = Blockly.JavaScript.workspaceToCode(workspace) + "255\n";
-        const allBytes = code.replace(/\n/g, ',')
-                             .split(',')
-                             .map(n => n.trim())
-                             .filter(n => n.length > 0 && !isNaN(n))
-                             .map(n => parseInt(n));
+        return xmlList;
+      });
+      
+      //window.onload = init;
+      showHome();    
 
-        if (currentMode === 'serial') {
-            if (!port || !port.isOpen) return alert("Connect USB first!");
-            // Send in 5-byte chunks for Serial
-            for (let i = 0; i < allBytes.length; i += 5) {
-                port.write(Buffer.from(allBytes.slice(i, i + 5)));
-                await new Promise(r => setTimeout(r, 50));
-            }
-        } else {
-            if (!bleCharacteristic) return alert("Connect Bluetooth first!");
-            // Send in chunks for BLE (Max 20 bytes per write)
-            for (let i = 0; i < allBytes.length; i += 20) {
-                const chunk = new Uint8Array(allBytes.slice(i, i + 20));
-                await bleCharacteristic.writeValue(chunk);
-                await new Promise(r => setTimeout(r, 100)); // BLE needs a bit more time
-            }
-        }
-        console.log("Program sent!");
-    };
-    
-    window.onload = init;
+      // --- 5. INIT ---
+      //function init() {
+      //  workspace = Blockly.inject('blocklyDiv', { toolbox: document.getElementById('toolbox'), renderer: 'zelos' });
+      //}
+
+    });
   </script>
 </body>
 </html>
