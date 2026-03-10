@@ -285,10 +285,10 @@
   <script>
     const fs = require('fs');
     const path = require('path');
-    const PROJECTS_DIR = path.join(__dirname, 'projects');
+    const PROJECTS_DIR = path.join(process.env.APPDATA, 'AquaKit', 'projects');
 
     // Create projects folder if it doesn't exist
-    if (!fs.existsSync(PROJECTS_DIR)) fs.mkdirSync(PROJECTS_DIR);
+    if (!fs.existsSync(PROJECTS_DIR)) fs.mkdirSync(PROJECTS_DIR, { recursive: true });
 
     let currentProjectFile = null;
     let workspace = null;

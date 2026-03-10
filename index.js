@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
 // These switches are vital for Web Bluetooth to work in Electron's browser engine
 app.commandLine.appendSwitch('enable-experimental-web-platform-features');
@@ -17,11 +18,9 @@ function createWindow() {
 
   // --- SERIAL PORT PERMISSIONS HANDLERS ---
   win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
-    // Grant both serial and bluetooth permissions
     if (permission === 'serial' || permission === 'bluetooth') return true;
     return false;
   });
-
   win.webContents.session.setDevicePermissionHandler((details) => {
     if (details.deviceType === 'serial' || details.deviceType === 'bluetooth') return true;
     return false;
@@ -37,31 +36,54 @@ function createWindow() {
     }
   });
 
-  // --- BLUETOOTH DEVICE PICKER (Move to webContents) ---
+  // --- BLUETOOTH DEVICE PICKER ---
   win.webContents.on('select-bluetooth-device', (event, deviceList, callback) => {
-    event.preventDefault(); // Stop Electron from looking for a default UI
-    
+    event.preventDefault();
     console.log('Scanning... Found these devices:', deviceList.map(d => d.deviceName));
-
-    // Look for our AquaKit
     const result = deviceList.find((device) => {
       return device.deviceName.includes('AquaKit');
     });
-
     if (result) {
       console.log('✅ AquaKit found! Connecting with ID:', result.deviceId);
       callback(result.deviceId);
-    } else {
-      // If not found in this batch, do nothing. 
-      // Electron will call this event again as more devices appear.
-      // DO NOT call callback('') or it will cancel the scan.
     }
   });
 
   win.loadFile('index.html');
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  // Check for updates after app starts (only runs in packaged app, not in dev)
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+});
+
+autoUpdater.on('update-available', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Available',
+    message: 'A new version of AquaKit is available. It will be downloaded in the background.',
+    buttons: ['OK']
+  });
+});
+
+autoUpdater.on('update-downloaded', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Ready',
+    message: 'Update downloaded. AquaKit will restart to install the update.',
+    buttons: ['Restart Now']
+  }).then(() => {
+    autoUpdater.quitAndInstall();
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Auto-updater error:', err);
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

@@ -5,34 +5,73 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "postinstall": "electron-rebuild"
   },
   "build": {
     "appId": "com.goliathrobotics.aquakit",
-    "productName": "AquaKit Control",
+    "productName": "AquaKit",
     "directories": {
       "output": "dist"
     },
     "files": [
-      "**/*"
+      "index.html",
+      "index.js",
+      "projects/",
+      "assets/",
+      "node_modules/**/*",
+      "!node_modules/.cache/**",
+      "!node_modules/**/*.md",
+      "!node_modules/**/*.txt",
+      "!node_modules/**/test/**",
+      "!node_modules/**/tests/**",
+      "!node_modules/**/docs/**",
+      "!node_modules/**/example/**",
+      "!node_modules/**/examples/**",
+      "!**/*.map"
     ],
+    "extraResources": [
+      "projects/"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "danibi1502",
+      "repo": "GRAquakit"
+    },
     "win": {
-      "target": "portable",
-      "icon": "icon.ico"
-    }
+      "target": "nsis",
+      "icon": "assets/AquakitLogo.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/AquakitLogo.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/AquakitLogo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "npmRebuild": true,
+    "buildDependenciesFromSource": true
   },
   "keywords": [],
-  "author": "",
+  "author": "Goliath Robotics",
   "license": "ISC",
-  "description": "",
+  "description": "AquaKit aquarium automation controller",
   "devDependencies": {
     "electron": "^38.1.2",
-    "electron-builder": "^26.0.12",
+    "electron-builder": "^26.8.1",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "@serialport/list": "^13.0.0",
     "@serialport/parser-readline": "^13.0.0",
+    "electron-updater": "^6.8.3",
     "serialport": "^13.0.0"
   }
 }
